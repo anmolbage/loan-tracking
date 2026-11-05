@@ -205,13 +205,20 @@ function install() {
   catch (e) { tasks = { ok: false, text: 'Reminders could not be switched on: ' + String(e && e.message || e) }; }
   var url = null, deployErr = null;
   try { url = deployWebApp_(); } catch (e) { deployErr = String(e && e.message || e); }
+  // Google often refuses publishing from inside the script's own project. If the RM has
+  // published by hand (Deploy → New deployment), use that address instead.
+  if (!url) { var manual = publishedUrl_(); if (manual) { url = manual; deployErr = null; props_().setProperty('WEBAPP_URL', url); } }
   log_('installer', 'install', 'app', '', url ? 'published' : 'publish failed: ' + deployErr);
   showDialog_(res.pin, url, tasks, deployErr);
 }
 
 function showAppLink() {
-  var url = props_().getProperty('WEBAPP_URL') || (ScriptApp.getService().getUrl ? ScriptApp.getService().getUrl() : '');
+  var url = props_().getProperty('WEBAPP_URL') || publishedUrl_();
   showDialog_(null, url || null, null, url ? null : 'The app is not published yet. Use Loan Tracking → Install.');
+}
+
+function publishedUrl_() {
+  try { var u = ScriptApp.getService().getUrl(); return u && /\/exec$/.test(u) ? u : null; } catch (e) { return null; }
 }
 
 // Publishes (or updates) the web app with the Apps Script API, so nobody has to use Deploy by hand.
@@ -256,9 +263,12 @@ function showDialog_(pin, url, tasks, deployErr) {
       '<p><a href="' + esc(link) + '" target="_blank" style="display:inline-block;background:#0f2a4a;color:#fff;padding:9px 14px;border-radius:9px;text-decoration:none;margin-right:6px">Open the app</a>' +
       '<a href="' + esc(share) + '" target="_blank" style="display:inline-block;background:#128c4a;color:#fff;padding:9px 14px;border-radius:9px;text-decoration:none">Send link to my phone (WhatsApp)</a></p>'
          : '') +
-    (deployErr ? '<div style="background:#fdf1d6;border-radius:10px;padding:10px 12px;margin-top:10px"><b>One more step to publish the app</b><br>' +
-      (apiOff ? '1. Open <a href="https://script.google.com/home/usersettings" target="_blank">script.google.com/home/usersettings</a> and switch <b>Google Apps Script API</b> to <b>On</b>.<br>2. Come back here and click <b>Loan Tracking → Install</b> again.'
-              : esc(deployErr) + '<br>Then click <b>Loan Tracking → Install</b> again.') + '</div>' : '') +
+    (deployErr ? '<div style="background:#fdf1d6;border-radius:10px;padding:10px 12px;margin-top:10px"><b>One more step: publish the app (1 minute, once)</b><br>' +
+      '1. <b>Extensions → Apps Script</b>.<br>' +
+      '2. Top right: <b>Deploy → New deployment</b> → gear ⚙ → <b>Web app</b>.<br>' +
+      '3. Execute as: <b>Me</b> · Who has access: <b>Anyone</b> → <b>Deploy</b>.<br>' +
+      '4. Come back to this Sheet and click <b>Loan Tracking → Install</b> again. This window then shows the app link.' +
+      '<br><span style="color:#5b6478;font-size:12px">(' + esc(deployErr).slice(0, 160) + ')</span></div>' : '') +
     '</div>';
   SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(460).setHeight(url ? 470 : 300), 'Loan Tracking');
 }
