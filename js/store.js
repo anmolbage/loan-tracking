@@ -10,7 +10,8 @@ const LS = {
   USER:  P + '_user',
   CACHE: P + '_cache',
   QUEUE: P + '_queue',
-  THEME: P + '_theme'
+  THEME: P + '_theme',
+  API:   P + '_api'     // the RM's own Apps Script address, set by the installer link
 };
 
 const todayISO = () => {
@@ -84,8 +85,24 @@ const Store = {
   },
 
   /* ---------------- transport ---------------- */
+  // The address comes from the installer link (?api=...) and is kept on the phone, so the
+  // public code never carries anyone's Sheet address. config.js is only a fallback.
+  apiUrl() {
+    let u = '';
+    try { u = localStorage.getItem(LS.API) || ''; } catch (e) {}
+    return u || CFG.API_URL;
+  },
+  isApiUrl(u) { return /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(String(u || '').trim()); },
+  setApiUrl(u) {
+    u = String(u || '').trim();
+    if (!this.isApiUrl(u)) return false;
+    if (this.apiUrl() !== u) this.clearSession();      // another Sheet: start clean
+    try { localStorage.setItem(LS.API, u); } catch (e) { return false; }
+    return true;
+  },
   configured() {
-    return !!(CFG.API_URL && CFG.API_URL.indexOf('PASTE_YOUR') === -1);
+    const u = this.apiUrl();
+    return !!(u && u.indexOf('PASTE_YOUR') === -1);
   },
 
   // Every call has a time limit: on a phone a request can stall (signal drop, network
@@ -97,7 +114,7 @@ const Store = {
     const timer = setTimeout(() => ctl.abort(), timeout);
     let res, data;
     try {
-      res = await fetch(CFG.API_URL, {
+      res = await fetch(this.apiUrl(), {
         method: 'POST',
         // text/plain keeps this a "simple request" so the browser skips
         // the CORS preflight that Apps Script cannot answer.

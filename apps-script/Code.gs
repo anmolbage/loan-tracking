@@ -113,8 +113,10 @@ function setup() {
   ensureTab_(ss, TABS.LOG, LOG_COLS);
 
   var users = ensureTab_(ss, TABS.USERS, USER_COLS);
+  var newPin = null;
   if (users.getLastRow() < 2) {
     var first = defaultUsers_();
+    newPin = String(first[0][2]).replace("'", '');
     users.getRange(2, 1, first.length, USER_COLS.length).setValues(first);
     Logger.log('Login created. Username: rm   Temporary PIN: ' + String(first[0][2]).replace("'", ''));
   }
@@ -131,7 +133,7 @@ function setup() {
   props_().setProperty('SETUP_DONE', '1');
   props_().setProperty('MIGRATION', String(MIGRATIONS.length));
   Logger.log('Setup complete. Your starting PIN is in the Users tab. Now deploy as a Web app.');
-  return 'Setup complete. Now deploy as a Web app.';
+  return { pin: newPin, message: 'Setup complete.' };
 }
 
 // Runs setup automatically the first time the web app is called, in case it was skipped.
@@ -180,6 +182,85 @@ function props_() { return PropertiesService.getScriptProperties(); }
 var SS_ = null;
 function ss_() {
   return SS_ || (SS_ = SHEET_ID ? SpreadsheetApp.openById(SHEET_ID) : SpreadsheetApp.getActiveSpreadsheet());
+}
+
+// ============================================================ INSTALLER
+// The RM makes a copy of the template Sheet, then clicks Loan Tracking → Install.
+// Google shows its permission screen (Allow / Deny). On Allow this sets up the tabs and the
+// rm login, switches on Google Tasks reminders, publishes the script as a web app through the
+// Apps Script API, and shows a link that connects the phone app to this Sheet.
+var APP_HOME = 'https://anmolbage.github.io/loan-tracking/';
+
+function onOpen() {
+  SpreadsheetApp.getUi().createMenu('Loan Tracking')
+    .addItem('Install / update the app connection', 'install')
+    .addItem('Show the app link again', 'showAppLink')
+    .addToUi();
+}
+
+function install() {
+  var res = setup();
+  var tasks;
+  try { setupTasks(); tasks = { ok: true, text: 'Follow-up reminders are on (Google Tasks list "' + TASK_LIST + '").' }; }
+  catch (e) { tasks = { ok: false, text: 'Reminders could not be switched on: ' + String(e && e.message || e) }; }
+  var url = null, deployErr = null;
+  try { url = deployWebApp_(); } catch (e) { deployErr = String(e && e.message || e); }
+  log_('installer', 'install', 'app', '', url ? 'published' : 'publish failed: ' + deployErr);
+  showDialog_(res.pin, url, tasks, deployErr);
+}
+
+function showAppLink() {
+  var url = props_().getProperty('WEBAPP_URL') || (ScriptApp.getService().getUrl ? ScriptApp.getService().getUrl() : '');
+  showDialog_(null, url || null, null, url ? null : 'The app is not published yet. Use Loan Tracking → Install.');
+}
+
+// Publishes (or updates) the web app with the Apps Script API, so nobody has to use Deploy by hand.
+// Needs "Google Apps Script API" switched on at https://script.google.com/home/usersettings
+function deployWebApp_() {
+  var base = 'https://script.googleapis.com/v1/projects/' + ScriptApp.getScriptId();
+  var call = function (method, path, body) {
+    var r = UrlFetchApp.fetch(base + path, {
+      method: method, contentType: 'application/json', muteHttpExceptions: true,
+      payload: body ? JSON.stringify(body) : '',
+      headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }
+    });
+    var j = {}; try { j = JSON.parse(r.getContentText() || '{}'); } catch (e) {}
+    if (r.getResponseCode() >= 300) throw new Error((j.error && j.error.message) || ('HTTP ' + r.getResponseCode()));
+    return j;
+  };
+  var v = call('post', '/versions', { description: 'Loan Tracking ' + todayStr_() });
+  var cfg = { versionNumber: v.versionNumber, manifestFileName: 'appsscript', description: 'Loan Tracking API' };
+  var id = props_().getProperty('DEPLOYMENT_ID'), d = null;
+  if (id) { try { d = call('put', '/deployments/' + id, { deploymentConfig: cfg }); } catch (e) { d = null; } }
+  if (!d) d = call('post', '/deployments', cfg);
+  props_().setProperty('DEPLOYMENT_ID', d.deploymentId);
+  var ep = (d.entryPoints || []).filter(function (e) { return e.entryPointType === 'WEB_APP'; })[0];
+  var url = ep && ep.webApp && ep.webApp.url;
+  if (!url) throw new Error('Published, but Google did not return the web address.');
+  props_().setProperty('WEBAPP_URL', url);
+  return url;
+}
+
+function showDialog_(pin, url, tasks, deployErr) {
+  var esc = function (t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  var link = url ? APP_HOME + '?api=' + encodeURIComponent(url) : '';
+  var share = link ? 'https://wa.me/?text=' + encodeURIComponent('Loan Tracking app: ' + link) : '';
+  var apiOff = deployErr && /Apps Script API|has not been used|disabled|PERMISSION_DENIED/i.test(deployErr);
+  var html = '<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5;color:#0f172a">' +
+    (url ? '<p style="color:#0b7a42;font-weight:bold;margin-top:0">✔ The app is connected to this Sheet.</p>' : '') +
+    (tasks ? '<p style="margin:6px 0;color:' + (tasks.ok ? '#0b7a42' : '#a1670a') + '">' + (tasks.ok ? '✔ ' : '⚠ ') + esc(tasks.text) + '</p>' : '') +
+    (pin ? '<div style="background:#f4f6fa;border-radius:10px;padding:10px 12px;margin:10px 0"><b>Sign in on the phone with</b><br>Username: <b>rm</b><br>Temporary PIN: <b style="font-size:18px;letter-spacing:2px">' + esc(pin) + '</b><br><span style="color:#5b6478;font-size:12px">The app then asks you to choose your own PIN. This PIN is also in the Users tab until then.</span></div>'
+         : (url ? '<p style="color:#5b6478">Sign in with username <b>rm</b> and your PIN.</p>' : '')) +
+    (url ? '<p style="margin:12px 0 6px"><b>Open the app with this link</b> (on the phone, then Add to Home screen):</p>' +
+      '<textarea readonly style="width:100%;height:70px;font-size:12px" onclick="this.select()">' + esc(link) + '</textarea>' +
+      '<p><a href="' + esc(link) + '" target="_blank" style="display:inline-block;background:#0f2a4a;color:#fff;padding:9px 14px;border-radius:9px;text-decoration:none;margin-right:6px">Open the app</a>' +
+      '<a href="' + esc(share) + '" target="_blank" style="display:inline-block;background:#128c4a;color:#fff;padding:9px 14px;border-radius:9px;text-decoration:none">Send link to my phone (WhatsApp)</a></p>'
+         : '') +
+    (deployErr ? '<div style="background:#fdf1d6;border-radius:10px;padding:10px 12px;margin-top:10px"><b>One more step to publish the app</b><br>' +
+      (apiOff ? '1. Open <a href="https://script.google.com/home/usersettings" target="_blank">script.google.com/home/usersettings</a> and switch <b>Google Apps Script API</b> to <b>On</b>.<br>2. Come back here and click <b>Loan Tracking → Install</b> again.'
+              : esc(deployErr) + '<br>Then click <b>Loan Tracking → Install</b> again.') + '</div>' : '') +
+    '</div>';
+  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(460).setHeight(url ? 470 : 300), 'Loan Tracking');
 }
 
 // ============================================================ ROUTING

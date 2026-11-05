@@ -125,7 +125,7 @@ async function doLogin() {
   $('#loginMsg').textContent = '';
   if (!u) { $('#loginMsg').textContent = 'Enter your username.'; return; }
   if (pin.length < 4) { $('#loginMsg').textContent = 'Enter your 4-digit PIN.'; return; }
-  if (!Store.configured()) { $('#loginMsg').textContent = 'API_URL is not set in js/config.js yet.'; return; }
+  if (!Store.configured()) { $('#loginMsg').textContent = 'Not connected to a Sheet yet. Open the link from the installer, or paste it below.'; showConnect(); return; }
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
   try {
     const typed = pin;
@@ -163,13 +163,13 @@ async function connectionCheck() {
   };
   lines.push('App v' + CFG.VERSION + ' · online: ' + navigator.onLine + ' · ' + (matchMedia('(display-mode: standalone)').matches ? 'installed app' : 'browser tab'));
   lines.push(navigator.userAgent);
-  lines.push('Server: …' + String(CFG.API_URL).slice(-16));
+  lines.push('Server: …' + String(Store.apiUrl()).slice(-16));
   await step('Read server (GET)', async () => {
-    const r = await fetch(CFG.API_URL, { method: 'GET', redirect: 'follow', cache: 'no-store' });
+    const r = await fetch(Store.apiUrl(), { method: 'GET', redirect: 'follow', cache: 'no-store' });
     const t = await r.text(); return r.status + ' ' + t.slice(0, 40);
   });
   await step('Send to server (POST ping)', async () => {
-    const r = await fetch(CFG.API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    const r = await fetch(Store.apiUrl(), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'ping' }), redirect: 'follow', cache: 'no-store' });
     const t = await r.text(); return r.status + ' ' + t.slice(0, 40);
   });
@@ -177,6 +177,23 @@ async function connectionCheck() {
   show();
 }
 $('#netCheckBtn').addEventListener('click', connectionCheck);
+
+/* ---------------- connect to the RM's Sheet ---------------- */
+// The installer link looks like .../loan-tracking/?api=<Apps Script /exec address>
+function apiFromText(t) {
+  t = String(t || '').trim();
+  const m = t.match(/[?&]api=([^&\s]+)/);
+  if (m) { try { t = decodeURIComponent(m[1]); } catch (e) {} }
+  return t;
+}
+function showConnect() { $('#connectBox').classList.remove('hidden'); }
+$('#connectBtn').addEventListener('click', () => {
+  const u = apiFromText($('#connectInput').value);
+  if (!Store.setApiUrl(u)) { $('#loginMsg').textContent = 'That is not the link from the installer. It should contain script.google.com/macros/…/exec'; return; }
+  $('#connectBox').classList.add('hidden');
+  $('#loginMsg').textContent = '';
+  toast('Connected. Sign in with rm and your PIN.', 'ok');
+});
 $('#loginUser').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 document.addEventListener('keydown', e => {
   if ($('#login').classList.contains('hidden')) return;
@@ -641,6 +658,7 @@ function renderMore() {
     isAdmin ? { k: 'staff', i: ICON.users, t: 'Logins & PINs', s: Store.users.length + ' login' + (Store.users.length === 1 ? '' : 's') } : null,
     { k: 'pin', i: ICON.key, t: 'Change my PIN', s: 'Keep your account secure' },
     { k: 'theme', i: ICON.moon, t: 'Dark mode', s: dark ? 'On' : 'Follows your phone', toggle: dark },
+    { k: 'connect', i: ICON.sheet, t: 'Connected Sheet', s: Store.configured() ? 'Server …' + String(Store.apiUrl()).slice(-14, -5) : 'Not connected' },
     isAdmin && CFG.SHEET_URL ? { k: 'sheet', i: ICON.sheet, t: 'Open Google Sheet', s: 'The database behind this app' } : null
   ].filter(Boolean);
 
@@ -657,6 +675,7 @@ document.addEventListener('click', async e => {
   const k = m.dataset.more;
   if (k === 'sync') { await doSync(); }
   if (k === 'export') exportCSV();
+  if (k === 'connect') toast('To connect another Sheet: sign out, then open the new installer link');
   if (k === 'reminders') toast(Store.reminders && Store.reminders.on ? 'Each follow-up date is a task in Google Tasks' : 'Ask Anmol to run setupTasks once in the Apps Script editor');
   if (k === 'staff') editStaff();
   if (k === 'pin') changePin();
@@ -852,8 +871,15 @@ $('#logoutBtn').addEventListener('click', () => {
     if (th) document.documentElement.dataset.theme = th;
   } catch (e) {}
 
+  // Opened from the installer link: remember the Sheet's address, then clean the address bar
+  if (/[?&]api=/.test(location.search)) {
+    const ok = Store.setApiUrl(apiFromText(location.search));
+    try { history.replaceState(null, '', location.pathname); } catch (e) {}
+    if (ok) setTimeout(() => toast('Connected to your Sheet. Sign in with rm and the PIN from the installer.', 'ok'), 300);
+  }
   Store.load();
   renderPinpad();
+  if (!Store.configured()) showConnect();
 
   if (Store.token && Store.user) enterApp();
   else showLogin();
