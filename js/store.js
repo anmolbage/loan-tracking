@@ -24,6 +24,8 @@ const Store = {
   items: [],        // loan proposals
   branches: [],     // the 40 branches with BM name and mobile (from the Sheet)
   desks: [],        // Personal / SME / Agri officer and AMH Head contacts
+  followups: [],    // every conversation logged: note, stage move, next date
+  reminders: null,  // { on, name } — Google Tasks status from the server
   users: [],
   settings: { products: {}, lateDays: { branch: 10, officer: 5, head: 3 }, nextDays: 3 },
   queue: [],
@@ -46,6 +48,8 @@ const Store = {
         this.items = c.items || [];
         this.branches = c.branches || [];
         this.desks = c.desks || [];
+        this.followups = c.followups || [];
+        this.reminders = c.reminders || null;
         this.users = c.users || [];
         this.settings = c.settings || this.settings;
         this.lastSync = c.lastSync || null;
@@ -58,7 +62,7 @@ const Store = {
   persist() {
     try {
       localStorage.setItem(LS.CACHE, JSON.stringify({
-        items: this.items, branches: this.branches, desks: this.desks, users: this.users, settings: this.settings, lastSync: this.lastSync, cursor: this.cursor
+        items: this.items, branches: this.branches, desks: this.desks, followups: this.followups, reminders: this.reminders, users: this.users, settings: this.settings, lastSync: this.lastSync, cursor: this.cursor
       }));
       localStorage.setItem(LS.QUEUE, JSON.stringify(this.queue));
     } catch (e) { console.warn('cache write failed', e); }
@@ -74,7 +78,7 @@ const Store = {
 
   clearSession() {
     this.token = null; this.user = null;
-    this.items = []; this.branches = []; this.desks = []; this.users = []; this.queue = [];
+    this.items = []; this.branches = []; this.desks = []; this.followups = []; this.users = []; this.queue = [];
     this.cursor = null; this.lastError = null;
     try { [LS.TOKEN, LS.USER, LS.CACHE, LS.QUEUE].forEach(k => localStorage.removeItem(k)); } catch (e) {}
   },
@@ -153,6 +157,13 @@ const Store = {
     this.users = r.users || [];
     if (r.branches) this.branches = r.branches;
     if (r.desks) this.desks = r.desks;
+    if (r.reminders) this.reminders = r.reminders;
+    if (r.followups) {
+      // keep follow-ups saved on this phone that the server has not stored yet
+      const queued = new Set(this.queue.filter(j => j.action === 'saveFollowup').map(j => j.payload.followup.id));
+      const local = this.followups.filter(f => queued.has(f.id) && !r.followups.some(x => x.id === f.id));
+      this.followups = r.followups.concat(local);
+    }
     this.settings = r.settings || this.settings;
     if (r.user) this.setSession(this.token, r.user);
     this.cursor = r.serverTime || null;
@@ -198,6 +209,11 @@ const Store = {
   branch(code) { return this.branches.find(b => Number(b.code) === Number(code)) || null; },
   desk(key) { return this.desks.find(d => d.key === key) || null; },
 
+  followupsFor(id) {
+    return this.followups.filter(f => f.proposalId === id)
+      .sort((a, b) => String(b.date).localeCompare(String(a.date)) || String(b.createdAt).localeCompare(String(a.createdAt)));
+  },
+
   /* ---------------- mutations (optimistic) ---------------- */
   // Saved on the phone at once, sent to the Sheet in the background (or when back online).
   saveItem(item) {
@@ -219,6 +235,17 @@ const Store = {
     this.persist();
     this.trySync();
     return item;
+  },
+
+  // A follow-up and the proposal it changes are queued together (follow-up first).
+  saveFollowup(fu, item) {
+    const now = new Date().toISOString();
+    fu.id = fu.id || ('F' + Date.now() + Math.floor(Math.random() * 1000));
+    fu.createdAt = fu.createdAt || now; fu.updatedAt = now; fu.createdBy = this.user.name;
+    this.followups.push(fu);
+    this.enqueue('saveFollowup', { followup: fu });
+    if (item) this.saveItem(item); else { this.persist(); this.trySync(); }
+    return fu;
   },
 
   deleteItem(id) {

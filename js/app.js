@@ -64,6 +64,9 @@ const ICON = {
   key: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m11 12 8-8 3 3-3 3-2-2-2 2"/></svg>',
   down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5M12 15V3"/></svg>',
   inbox: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.4 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.4-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.8 1.1z"/></svg>',
+  phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.4 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.4 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>',
+  wa: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3.1.8.8-3-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.4-.7-1.7-.8s-.4-.1-.5.1-.6.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.6-1.2a.4.4 0 0 0 0-.4L9.5 7.9c-.2-.5-.4-.4-.5-.4h-.5a1 1 0 0 0-.7.3A2.9 2.9 0 0 0 7 10a5.1 5.1 0 0 0 1 2.6 11.5 11.5 0 0 0 4.5 4 5.1 5.1 0 0 0 3.1.6 2.6 2.6 0 0 0 1.7-1.2 2.1 2.1 0 0 0 .2-1.2c-.1-.1-.3-.2-.5-.3z"/></svg>',
+  bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>',
   cloud: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 10h-1.3A7 7 0 1 0 5 16"/><path d="M12 12v9M8 17l4 4 4-4"/></svg>'
 };
 
@@ -217,10 +220,29 @@ const addDays = (iso, n) => { const d = new Date(iso + 'T00:00:00'); d.setDate(d
 const badgeCls = p => p.stage === 'Disbursed' ? 'b-done' : p.stage === 'Rejected' ? 'b-lost' : p.stage === 'Sanctioned' ? 'b-sanctioned'
   : ({ branch: 'b-branch', officer: 'b-officer', head: 'b-ro' })[holderOf(p)] || 'b-branch';
 const HOLDER_LABEL = { branch: 'With branch', officer: 'With processing officer', head: 'With AMH Head', closed: 'Closed' };
+const HOLDER_COLOR = { branch: '#1d4ed8', officer: '#0e7490', head: '#6d28d9' };
+// Which moves make sense from each stage (the follow-up form offers only these)
+const MOVES = {
+  'Lead': ['Docs pending', 'Received AMH', 'Rejected'], 'Docs pending': ['Received AMH', 'Rejected'],
+  'Received AMH': ['Processing', 'Query', 'Rejected'], 'Processing': ['With AMH Head', 'Query', 'Rejected'],
+  'Query': ['Processing', 'Rejected'], 'With AMH Head': ['Sanctioned', 'Query', 'Rejected'],
+  'Sanctioned': ['Disbursed', 'Rejected'], 'Disbursed': [], 'Rejected': []
+};
+const MOVE_LABEL = { 'Docs pending': 'Documents pending', 'Received AMH': 'Received at AMH', 'Processing': 'Taken up / resubmitted',
+  'Query': 'Query raised to branch', 'With AMH Head': 'Put up to AMH Head', 'Sanctioned': 'Sanctioned', 'Disbursed': 'Disbursed', 'Rejected': 'Rejected / Withdrawn' };
+const KEY_DATE = { 'Received AMH': 'receivedAmhDate', 'With AMH Head': 'putUpDate', 'Sanctioned': 'sanctionDate', 'Disbursed': 'disbDate' };
+const TRACK = ['Lead', 'Docs pending', 'Received AMH', 'Processing', 'With AMH Head', 'Sanctioned', 'Disbursed'];
+
+const lateLimit = h => Number((Store.settings.lateDays || {})[h]) || ({ branch: 10, officer: 5, head: 3 })[h] || 10;
 function holderDays(p) { const n = daysFrom(p.holderSince || p.stageSince); return n === null ? 0 : Math.max(0, -n); }
+const isLate = p => isLive(p) && holderDays(p) > lateLimit(holderOf(p));
+const isDue = p => isLive(p) && !!p.nextFollowup && daysFrom(p.nextFollowup) <= 0;
+const inWeek = p => { if (!isLive(p) || !p.nextFollowup) return false; const n = daysFrom(p.nextFollowup); return n > 0 && n <= 7; };
+const byAge = list => list.slice().sort((a, b) => (isLive(b) - isLive(a)) || holderDays(b) - holderDays(a));
+const byNext = list => list.slice().sort((a, b) => String(a.nextFollowup || '9999').localeCompare(String(b.nextFollowup || '9999')));
 function agePill(p) {
   if (!isLive(p)) return '';
-  const lim = (Store.settings.lateDays || {})[holderOf(p)] || 10, n = holderDays(p);
+  const lim = lateLimit(holderOf(p)), n = holderDays(p);
   const cls = n > lim ? ' stuck' : n > lim * 0.6 ? ' warn' : '';
   return `<span class="age${cls}">${n}d</span>`;
 }
@@ -231,9 +253,30 @@ function dueTxt(p) {
   return `<span class="due${n < 0 ? ' over' : n === 0 ? ' today' : ''}">${ICON.cal}${esc(prettyDate(p.nextFollowup))}${n < 0 ? ' · ' + (-n) + 'd over' : ''}</span>`;
 }
 const branchName = p => p.branchName || (Store.branch(p.branchCode) || {}).name || String(p.branchCode || '');
+// Who holds the file now, with the mobile from the Branches / Desks tab
+function holderContact(p) {
+  const h = holderOf(p);
+  if (h === 'branch') { const b = Store.branch(p.branchCode) || {}; return { short: 'BM', name: (b.bmName || 'BM') + ', ' + branchName(p), greet: b.bmName || 'Branch Manager, ' + branchName(p), mobile: b.bmMobile || '' }; }
+  if (h === 'closed') return { short: '', name: '—', greet: '', mobile: '' };
+  const d = Store.desk(h === 'head' ? 'head' : p.segment) || { title: h === 'head' ? 'AMH Head' : (SEG[p.segment] || '') + ' Officer' };
+  return { short: h === 'head' ? 'AMH Head' : 'officer', name: d.name ? d.title + ' · ' + d.name : d.title, greet: d.name || d.title, mobile: d.mobile || '' };
+}
+const digits10 = m => { const d = String(m || '').replace(/\D/g, '').slice(-10); return d.length === 10 ? d : ''; };
+function waText(p) {
+  const c = holderContact(p);
+  return `Dear ${c.greet},\nWhat is the current status of the loan proposal of ${p.borrower} (${branchName(p)}) – ${p.product} ${lakh(p.amount)}? ` +
+    `It has been at "${stageDef(p.stage).name}" since ${longDate(p.stageSince)}.\nKindly update me.\n– Regional Manager, ${CFG.OFFICE_NAME}`;
+}
+
+// Segment filter shared by Home and Chase
+let segF = '';
+const inSeg = p => !segF || p.segment === segF;
+const segChips = () => [['', 'All segments'], ...Object.entries(SEG)].map(([k, l]) =>
+  `<button class="chip${segF === k ? ' on' : ''}" data-segf="${k}">${esc(l)}</button>`).join('');
+document.addEventListener('click', e => { const c = e.target.closest('[data-segf]'); if (c) { segF = c.dataset.segf; render(); } });
 
 /* ============================================================
-   HOME — slice 1: live total + latest (slice 3 adds Chase and counts)
+   HOME
    ============================================================ */
 function renderHome() {
   const u = Store.user || {};
@@ -243,14 +286,90 @@ function renderHome() {
   $('#homeAvatar').textContent = initials(u.name);
   $('#homeBanner').innerHTML = syncBanner();
 
-  const live = Store.items.filter(isLive);
-  $('#kpiTotal').textContent = lakh(sum(live));
-  $('#kpiNote').textContent = live.length + ' live proposal' + (live.length === 1 ? '' : 's') + ' · ' + Store.branches.length + ' branches';
+  const all = Store.items.filter(inSeg), live = all.filter(isLive);
+  const pipe = live.filter(p => p.stage !== 'Sanctioned'), sanc = live.filter(p => p.stage === 'Sanctioned');
+  const due = live.filter(isDue), late = byAge(live.filter(isLate));
+  const tile = (h, t, s) => { const ls = pipe.filter(p => holderOf(p) === h);
+    return `<button class="ph" style="--pc:${HOLDER_COLOR[h]}" data-chase="${h}"><b>${ls.length}</b><span>${t}</span><small>${lakh(sum(ls))} · ${s}</small></button>`; };
 
-  const latest = Store.items.slice().sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))).slice(0, 5);
-  $('#homeList').innerHTML = latest.length ? latest.map(itemCard).join('')
-    : emptyBlock('No proposals yet', 'Tap + after a call with a BM or the AMH to add the first one.');
+  $('#homeBody').innerHTML = `
+    <div class="chips">${segChips()}</div>
+    <div class="hero" style="margin-bottom:20px">
+      <button style="display:block;width:100%;text-align:left;color:inherit;position:relative" data-chase="pipe">
+        <div class="label">In pipeline</div>
+        <div class="value">${lakh(sum(pipe))}</div>
+        <div class="note">${pipe.length} proposal${pipe.length === 1 ? '' : 's'}${segF ? ' · ' + SEG[segF] : ''}</div></button>
+      <div class="hero-row">
+        <button class="hero-chip" data-chase="sanc" style="color:inherit;text-align:left"><b>${lakh(sum(sanc))}</b><span>${sanc.length} sanctioned, to disburse</span></button>
+        <button class="hero-chip" data-chase="due" style="color:inherit;text-align:left"><b>${due.length}</b><span>follow-ups due</span></button>
+        <button class="hero-chip" data-chase="late" style="color:inherit;text-align:left"><b>${late.length}</b><span>late files</span></button>
+      </div>
+    </div>
+    <div class="sec">
+      <div class="sec-head"><h2>Where the files are</h2><span class="link" data-chase="late">Chase</span></div>
+      <div class="split">${tile('branch', 'With branches', 'to chase')}${tile('officer', 'With officers', 'processing')}${tile('head', 'With AMH Head', 'for sanction')}</div>
+    </div>
+    <div class="sec">
+      <div class="sec-head"><h2>By stage</h2><span class="link" data-go="items">View all</span></div>
+      <div class="stats">${STAGES.map(s => { const n = all.filter(p => p.stage === s.id).length;
+        return `<button class="stat" data-pstage="${esc(s.id)}"><b>${n}</b><span><i class="dot" style="background:${HOLDER_COLOR[s.holder] || '#94a3b8'}"></i>${esc(s.name)}</span></button>`; }).join('')}</div>
+    </div>
+    ${late.length ? `<div class="sec"><div class="sec-head"><h2>Late files</h2><span class="link" data-chase="late">All ${late.length}</span></div>
+      <div class="list" style="padding:0">${late.slice(0, 4).map(itemCard).join('')}</div></div>` : ''}
+    <div class="sec"><div class="sec-head"><h2>Due &amp; overdue</h2><span class="link" data-chase="due">All ${due.length}</span></div>
+      <div class="list" style="padding:0">${due.length ? byNext(due).slice(0, 5).map(itemCard).join('')
+        : (Store.items.length ? emptyBlock('Nothing due today', 'Follow-ups set for later show up here on their day.') : emptyBlock('No proposals yet', 'Tap + after a call with a BM or the AMH to add the first one.'))}</div></div>`;
 }
+document.addEventListener('click', e => {
+  const c = e.target.closest('[data-chase]');
+  if (c) { chaseTab = c.dataset.chase; go('chase'); return; }
+  const s = e.target.closest('[data-pstage]');
+  if (s) { filters.stage = s.dataset.pstage; go('items'); }
+});
+
+/* ============================================================
+   CHASE — who to follow up with, and what changed
+   ============================================================ */
+let chaseTab = 'due';
+const CHASE_TABS = [
+  ['due', 'Due & overdue', l => byNext(l.filter(isDue)), 'Follow-up date is today or has passed.'],
+  ['late', 'Late', l => byAge(l.filter(isLate)), 'With one person longer than the day limit.'],
+  ['branch', 'With branches', l => byAge(l.filter(p => holderOf(p) === 'branch' && p.stage !== 'Sanctioned')), 'Leads, documents and queries pending at branch.'],
+  ['officer', 'With officers', l => byAge(l.filter(p => holderOf(p) === 'officer')), 'Received at AMH or under processing.'],
+  ['head', 'With AMH Head', l => byAge(l.filter(p => holderOf(p) === 'head')), 'Put up for sanction.'],
+  ['sanc', 'To disburse', l => byAge(l.filter(p => p.stage === 'Sanctioned')), 'Sanctioned, not yet disbursed.'],
+  ['week', 'Next 7 days', l => byNext(l.filter(inWeek)), 'Follow-ups coming up this week.'],
+  ['pipe', 'In pipeline', l => byAge(l.filter(p => isLive(p) && p.stage !== 'Sanctioned')), 'Every live file up to sanction.'],
+  ['activity', 'Recent activity', null, 'Every conversation you logged, newest first.']
+];
+let chaseQ = '';
+function renderChase() {
+  const q = chaseQ.toLowerCase();
+  const base = Store.items.filter(inSeg).filter(p => !q || [p.borrower, branchName(p), p.branchCode, p.product].join(' ').toLowerCase().includes(q));
+  const tab = CHASE_TABS.find(t => t[0] === chaseTab) || CHASE_TABS[0];
+  $('#chaseSeg').innerHTML = segChips();
+  $('#chaseChips').innerHTML = CHASE_TABS.map(([k, l, fn]) =>
+    `<button class="chip${tab[0] === k ? ' on' : ''}" data-ctab="${k}">${esc(l)}${fn ? ' · ' + fn(base).length : ''}</button>`).join('');
+  if (tab[0] === 'activity') {
+    const ids = new Set(base.map(p => p.id));
+    const fus = Store.followups.filter(f => ids.has(f.proposalId))
+      .sort((a, b) => String(b.date).localeCompare(String(a.date)) || String(b.createdAt).localeCompare(String(a.createdAt))).slice(0, 50);
+    $('#chaseNote').textContent = fus.length + ' entries — ' + tab[3];
+    $('#chaseList').innerHTML = fus.length ? `<div class="card"><div class="timeline">${fus.map(f => {
+      const p = Store.items.find(x => x.id === f.proposalId) || {};
+      return `<button class="tl" data-item="${esc(f.proposalId)}" style="display:block;width:100%;text-align:left">
+        <div class="tm">${esc(prettyDate(f.date))} · ${esc(branchName(p))} · from ${esc(f.heardFrom || '—')}</div>
+        <div class="tn"><b>${esc(p.borrower || '')}</b> — ${esc(f.note)}</div>
+        <div class="tb">${f.stageTo && f.stageTo !== f.stageFrom ? (f.stageFrom ? 'Moved to ' : 'Added at ') + esc(stageDef(f.stageTo).name) : ''}${f.nextDate ? (f.stageTo && f.stageTo !== f.stageFrom ? ' · ' : '') + 'next ' + esc(prettyDate(f.nextDate)) : ''}</div>
+      </button>`; }).join('')}</div></div>` : emptyBlock('No activity yet', 'Log a follow-up from any proposal.');
+    return;
+  }
+  const list = tab[2](base);
+  $('#chaseNote').textContent = list.length + ' file' + (list.length === 1 ? '' : 's') + ' · ' + lakh(sum(list)) + ' — ' + tab[3];
+  $('#chaseList').innerHTML = list.length ? list.map(itemCard).join('') : emptyBlock('All clear', 'Nothing in this bucket.');
+}
+document.addEventListener('click', e => { const t = e.target.closest('[data-ctab]'); if (t) { chaseTab = t.dataset.ctab; renderChase(); } });
+$('#chaseSearch').addEventListener('input', e => { chaseQ = e.target.value; renderChase(); });
 
 /* ============================================================
    PROPOSALS — list, search, filter
@@ -304,37 +423,109 @@ document.addEventListener('click', e => {
 function emptyBlock(t, p) { return `<div class="empty">${ICON.inbox}<b>${esc(t)}</b><p>${esc(p)}</p></div>`; }
 function kv(k, v) { return `<div class="kv"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`; }
 
-/* ---------------- detail (slice 2 adds history and the follow-up form) ---------------- */
+/* ============================================================
+   FILE PAGE
+   ============================================================ */
 function openDetail(id) {
   const p = Store.items.find(i => i.id === id);
   if (!p) return;
-  const b = Store.branch(p.branchCode) || {};
+  const live = isLive(p), c = holderContact(p);
+  const idx = TRACK.indexOf(p.stage === 'Query' ? 'Processing' : p.stage);
+  const strip = TRACK.map((s, i) => `<i class="${p.stage === 'Rejected' ? 'lost' : i < idx ? 'done' : i === idx ? 'cur' : ''}"></i>`).join('');
+  const dbox = (k, l) => `<div class="${p[k] ? 'set' : ''}"><b>${p[k] ? esc(prettyDate(p[k])) : '—'}</b><span>${l}</span></div>`;
+  const mob = digits10(c.mobile);
+  const hist = Store.followupsFor(p.id);
   openSheet(`
     <h3>${esc(p.borrower)}</h3>
-    <p class="sub">${esc(branchName(p))} (${esc(p.branchCode)}) · ${esc(SEG[p.segment] || '')} · ${esc(p.product)}</p>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px"><span class="badge ${badgeCls(p)}">${esc(stageDef(p.stage).name)}</span>${agePill(p)}</div>
-    <div class="card">
-      ${kv('Amount', lakh(p.amount))}
-      ${kv('File is with', isLive(p) ? HOLDER_LABEL[holderOf(p)] + ' · ' + holderDays(p) + ' days' : 'Closed')}
+    <p class="sub">${esc(branchName(p))} (${esc(p.branchCode)}) · ${esc(SEG[p.segment] || '')} · ${esc(p.product)} · ${lakh(p.amount)}</p>
+    <div style="display:flex;gap:8px;align-items:center"><span class="badge ${badgeCls(p)}">${esc(stageDef(p.stage).name)}</span>${agePill(p)}</div>
+    <div class="stages">${strip}</div>
+    <div class="stage-line"><span>${live ? esc(HOLDER_LABEL[holderOf(p)]) + ' · ' + holderDays(p) + ' day' + (holderDays(p) === 1 ? '' : 's') : 'Closed'}</span>
+      <span>${live && p.nextFollowup ? 'Next: ' + esc(prettyDate(p.nextFollowup)) : ''}</span></div>
+    <div class="dates">${dbox('receivedAmhDate', 'Received AMH')}${dbox('putUpDate', 'Put up')}${dbox('sanctionDate', 'Sanctioned')}${dbox('disbDate', 'Disbursed')}</div>
+    ${live ? `<button class="btn" data-act="followup" data-id="${esc(p.id)}">${ICON.edit} Follow-up / move stage</button>
+    <div class="btn-row" style="margin-top:10px">
+      ${mob ? `<a class="btn ghost" href="tel:+91${mob}">${ICON.phone} Call ${esc(c.short)}</a>` : `<button class="btn ghost" disabled>${ICON.phone} No mobile</button>`}
+      <a class="btn ghost" style="color:#128c7e" target="_blank" rel="noopener" href="https://wa.me/${mob ? '91' + mob : ''}?text=${encodeURIComponent(waText(p))}">${ICON.wa} Ask status</a>
+    </div>` : ''}
+    <div class="card" style="margin-top:14px">
+      ${kv('File is with', live ? c.name + (c.mobile ? ' · ' + c.mobile : '') : 'Closed')}
       ${kv('Stage since', p.stageSince ? longDate(p.stageSince) : '—')}
-      ${kv('Next follow-up', isLive(p) ? (p.nextFollowup ? longDate(p.nextFollowup) : 'Not set') : '—')}
+      ${kv('Next follow-up', live ? (p.nextFollowup ? longDate(p.nextFollowup) : 'Not set') : '—')}
       ${kv('Last heard', (p.lastHeard ? longDate(p.lastHeard) : '—') + (p.heardFrom ? ' · from ' + p.heardFrom : ''))}
-      ${kv('Branch Manager', b.bmName ? b.bmName + (b.bmMobile ? ' · ' + b.bmMobile : '') : 'Not in the Branches tab yet')}
       ${kv('Added', prettyTime(p.createdAt))}
     </div>
-    ${p.remarks ? `<div class="card" style="margin-top:12px"><div class="card-title">Remarks</div><div style="font-size:14.5px;line-height:1.5">${esc(p.remarks)}</div></div>` : ''}
-    <button class="btn" data-act="edit" data-id="${esc(p.id)}" style="margin-top:16px">${ICON.edit} Edit</button>
-    <button class="btn ghost" data-act="delete" data-id="${esc(p.id)}" style="margin-top:10px;color:var(--danger)">${ICON.trash} Delete</button>
+    ${hist.length ? `<div style="margin-top:18px"><div class="sec-head"><h2>Follow-up history</h2></div>
+      <div class="timeline">${hist.map(f => `<div class="tl">
+        <div class="tm">${esc(longDate(f.date))} · from ${esc(f.heardFrom || '—')}</div>
+        <div class="tn">${esc(f.note || '—')}</div>
+        <div class="tb">${f.stageTo && f.stageTo !== f.stageFrom ? (f.stageFrom ? 'Moved to ' : 'Added at ') + esc(stageDef(f.stageTo).name) : ''}${f.nextDate ? (f.stageTo && f.stageTo !== f.stageFrom ? ' · ' : '') + 'next ' + esc(prettyDate(f.nextDate)) : ''}</div>
+      </div>`).join('')}</div></div>` : ''}
+    <div class="btn-row" style="margin-top:18px">
+      <button class="btn ghost" data-act="edit" data-id="${esc(p.id)}">${ICON.edit} Edit</button>
+      <button class="btn ghost" data-act="delete" data-id="${esc(p.id)}" style="color:var(--danger)">${ICON.trash} Delete</button>
+    </div>
   `);
 }
 document.addEventListener('click', e => {
   const a = e.target.closest('[data-act]'); if (!a) return;
   const id = a.dataset.id;
   if (a.dataset.act === 'edit') { closeSheet(); openForm(id); }
+  if (a.dataset.act === 'followup') { openFollowup(id); }
   if (a.dataset.act === 'delete') {
     if (!confirm('Delete this proposal? It stays in the Sheet marked deleted.')) return;
     Store.deleteItem(id); closeSheet(); toast('Deleted', 'ok'); render();
   }
+});
+
+/* ============================================================
+   FOLLOW-UP — what happened, move stage, next date
+   ============================================================ */
+const QUICK_NOTES = ['No change', 'Documents still pending', 'Query replied by branch', 'Officer will put up this week', 'Discussed in meeting'];
+function openFollowup(id) {
+  const p = Store.items.find(x => x.id === id); if (!p) return;
+  const next = addDays(todayStr(), Number(Store.settings.nextDays) || 3);
+  openSheet(`
+    <h3>Follow-up</h3>
+    <p class="sub">${esc(p.borrower)} · ${esc(branchName(p))} · ${esc(stageDef(p.stage).name)}</p>
+    <div class="field"><label>What happened? *</label>
+      <textarea id="fuNote" rows="3" placeholder="e.g. BM says sale deed copy will come on Monday"></textarea></div>
+    <div class="quick">${QUICK_NOTES.map(t => `<button data-qnote="${esc(t)}">${esc(t)}</button>`).join('')}</div>
+    <div class="row2">
+      <div class="field"><label>Move stage to</label>${sel('fuStage', [{ v: '', t: 'No change' }, ...(MOVES[p.stage] || []).map(m => ({ v: m, t: MOVE_LABEL[m] }))], '')}</div>
+      <div class="field"><label>Heard from</label>${sel('fuHeard', CFG.HEARD_FROM, p.heardFrom || 'BM')}</div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Date it happened</label><input id="fuDate" type="date" value="${todayStr()}" max="${todayStr()}"></div>
+      <div class="field"><label>Next follow-up</label><input id="fuNext" type="date" value="${next}" min="${todayStr()}"></div>
+    </div>
+    <div class="quick" style="margin-top:-4px">${[[1, 'Tomorrow'], [3, '3 days'], [7, '1 week'], [15, '15 days']].map(([n, t]) => `<button data-qnext="${addDays(todayStr(), n)}">${t}</button>`).join('')}</div>
+    <button class="btn" id="fuSave" style="margin-top:6px">Save follow-up</button>
+  `);
+  $('#fuSave').onclick = () => {
+    const note = $('#fuNote').value.trim();
+    if (!note) { toast('Write a short note on what happened', 'err'); return; }
+    const to = $('#fuStage').value, date = $('#fuDate').value || todayStr(), heard = $('#fuHeard').value;
+    if (date > todayStr()) { toast('The date cannot be in the future', 'err'); return; }
+    const x = JSON.parse(JSON.stringify(p));
+    if (to) {
+      const holderChanged = stageDef(p.stage).holder !== stageDef(to).holder;
+      x.stage = to; x.stageSince = date;
+      if (holderChanged) x.holderSince = date;
+      if (KEY_DATE[to] && !x[KEY_DATE[to]]) x[KEY_DATE[to]] = date;
+    }
+    x.nextFollowup = isLive(x) ? $('#fuNext').value : '';
+    x.lastHeard = date; x.heardFrom = heard; x.remarks = note;
+    Store.saveFollowup({ proposalId: p.id, date, note, stageFrom: p.stage, stageTo: to || p.stage, nextDate: x.nextFollowup, heardFrom: heard }, x);
+    toast(to ? 'Saved · moved to ' + stageDef(to).name : 'Follow-up saved', 'ok');
+    render(); openDetail(p.id);
+  };
+}
+document.addEventListener('click', e => {
+  const q = e.target.closest('[data-qnote]');
+  if (q) { const t = $('#fuNote'); t.value = t.value ? t.value + '. ' + q.dataset.qnote : q.dataset.qnote; return; }
+  const n = e.target.closest('[data-qnext]');
+  if (n) $('#fuNext').value = n.dataset.qnext;
 });
 
 /* ============================================================
@@ -384,6 +575,7 @@ function drawForm() {
     </div>
     <div class="field"><label>Heard from</label>${sel('fHeard', CFG.HEARD_FROM, x.heardFrom)}</div>
     <div class="field"><label>Remarks</label><textarea id="fRemarks" rows="3" placeholder="What the BM or AMH said">${esc(x.remarks)}</textarea></div>
+    ${editing ? '<p class="hint" style="font-size:12px;color:var(--text-3)">To log a conversation, use Follow-up on the proposal page — it keeps the history.</p>' : ''}
   `;
   $('#fSeg').onchange = e => { collectInto(); formItem.segment = e.target.value; formItem.product = products(e.target.value)[0] || ''; drawForm(); };
 }
@@ -420,10 +612,10 @@ $('#formSave').addEventListener('click', () => {
   const holderChanged = !prev || stageDef(prev.stage).holder !== stageDef(x.stage).holder;
   x.holderSince = holderChanged ? x.stageSince : (prev.holderSince || prev.stageSince);
   if (!prev || prev.stage !== x.stage) x.lastHeard = todayStr();
-  // key dates, set the first time a file reaches the stage
-  const keyDate = { 'Received AMH': 'receivedAmhDate', 'With AMH Head': 'putUpDate', 'Sanctioned': 'sanctionDate', 'Disbursed': 'disbDate' }[x.stage];
-  if (keyDate && !x[keyDate]) x[keyDate] = x.stageSince;
-  Store.saveItem(x);
+  if (KEY_DATE[x.stage] && !x[KEY_DATE[x.stage]]) x[KEY_DATE[x.stage]] = x.stageSince;
+  if (x.stage === 'Processing' && !x.receivedAmhDate) x.receivedAmhDate = x.stageSince;
+  const saved = Store.saveItem(x);
+  if (!prev) Store.saveFollowup({ proposalId: saved.id, date: todayStr(), note: x.remarks || 'Proposal added', stageFrom: '', stageTo: x.stage, nextDate: x.nextFollowup, heardFrom: x.heardFrom }, null);
   closeForm();
   toast(navigator.onLine ? 'Saved' : 'Saved on this phone — will sync', 'ok');
   render();
@@ -445,6 +637,7 @@ function renderMore() {
   const items = [
     { k: 'sync', i: ICON.cloud, t: 'Sync now', s: Store.queue.length ? Store.queue.length + ' pending change(s)' : 'Everything is up to date' },
     { k: 'export', i: ICON.down, t: 'Export CSV', s: 'Download the proposals currently on screen' },
+    { k: 'reminders', i: ICON.bell, t: 'Follow-up reminders', s: Store.reminders && Store.reminders.on ? 'On · Google Tasks list "' + Store.reminders.name + '"' : 'Off · run setupTasks in the script editor (see README)' },
     isAdmin ? { k: 'staff', i: ICON.users, t: 'Logins & PINs', s: Store.users.length + ' login' + (Store.users.length === 1 ? '' : 's') } : null,
     { k: 'pin', i: ICON.key, t: 'Change my PIN', s: 'Keep your account secure' },
     { k: 'theme', i: ICON.moon, t: 'Dark mode', s: dark ? 'On' : 'Follows your phone', toggle: dark },
@@ -464,6 +657,7 @@ document.addEventListener('click', async e => {
   const k = m.dataset.more;
   if (k === 'sync') { await doSync(); }
   if (k === 'export') exportCSV();
+  if (k === 'reminders') toast(Store.reminders && Store.reminders.on ? 'Each follow-up date is a task in Google Tasks' : 'Ask Anmol to run setupTasks once in the Apps Script editor');
   if (k === 'staff') editStaff();
   if (k === 'pin') changePin();
   if (k === 'sheet') window.open(CFG.SHEET_URL, '_blank');
@@ -625,6 +819,9 @@ window.addEventListener('offline', () => { toast('Offline — changes saved on t
 function render() {
   if (current === 'home') renderHome();
   if (current === 'items') renderItems();
+  if (current === 'chase') renderChase();
+  const due = Store.items.filter(isDue).length;
+  $('#chaseBadge').textContent = due; $('#chaseBadge').classList.toggle('hidden', !due);
   if (current === 'more') renderMore();
 }
 Store.on(() => { if (!$('#app').classList.contains('hidden')) render(); });

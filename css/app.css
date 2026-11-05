@@ -486,3 +486,21 @@ details.acc[open] > summary::after{content:'−'}
 details.acc .acc-body{padding:0 16px 16px}
 
 .chip svg{width:14px;height:14px;vertical-align:-2px;margin-right:2px}
+
+/* ---------- Loan Tracking additions ---------- */
+.stages{display:flex;gap:4px;margin:14px 0 6px}
+.stages i{flex:1;height:6px;border-radius:99px;background:var(--line)}
+.stages i.done{background:var(--brand-2)}
+.stages i.cur{background:var(--brand-2);box-shadow:0 0 0 3px rgba(14,116,144,.2)}
+.stages i.lost{background:var(--danger)}
+.stage-line{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;color:var(--text-2);font-weight:600;margin-bottom:12px}
+.quick{display:flex;gap:6px;flex-wrap:wrap;margin:-6px 0 14px}
+.quick button{font-size:12.5px;font-weight:600;padding:6px 11px;border-radius:99px;background:var(--surface-2);border:1px solid var(--line);color:var(--text-2)}
+.quick button:active{transform:scale(.95)}
+.nbadge{position:absolute;top:2px;left:calc(50% + 4px);min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--danger);color:#fff;font-size:10px;font-weight:800;line-height:17px;text-align:center}
+.hero button{border:0;background:none;padding:0;font:inherit;cursor:pointer}
+.hero-chip{border:0;font:inherit;cursor:pointer;min-width:0;flex:1}
+.btn-row .btn{gap:6px}
+.btn svg{width:17px;height:17px;flex:none}
+#homeBody .chips{padding-left:18px}
+.ph,.stat{border:0;font:inherit;color:inherit;cursor:pointer}

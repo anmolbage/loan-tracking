@@ -34,6 +34,7 @@ var LOCK_MINUTES = 15;          // ...for this long
 
 var TABS = {
   ITEMS: 'Proposals',
+  FOLLOWUPS: 'FollowUps',
   BRANCHES: 'Branches',
   DESKS: 'Desks',
   USERS: 'Users',
@@ -48,6 +49,11 @@ var ITEM_COLS = ['id', 'createdAt', 'updatedAt', 'branchCode', 'branchName', 'bo
   'receivedAmhDate', 'putUpDate', 'sanctionDate', 'disbDate', 'createdBy', 'deleted'];
 var NUM_COLS = ['amount'];
 var DATE_COLS = ['stageSince', 'holderSince', 'nextFollowup', 'lastHeard', 'receivedAmhDate', 'putUpDate', 'sanctionDate', 'disbDate'];
+
+// One row per conversation logged by the RM. Stage history and Recent activity come from here.
+var FU_COLS = ['id', 'createdAt', 'updatedAt', 'proposalId', 'date', 'note', 'stageFrom', 'stageTo', 'nextDate', 'heardFrom', 'createdBy', 'deleted'];
+var FU_DATE_COLS = ['date', 'nextDate'];
+var CLOSED_STAGES = { 'Disbursed': true, 'Rejected': true };
 
 // Branch Managers and AMH contacts are typed or pasted into these tabs in the Sheet
 // (never kept in this file: the repo is public).
@@ -93,6 +99,7 @@ var DESK_LIST = [['personal', 'Personal Officer'], ['sme', 'SME Officer'], ['agr
 function setup() {
   var ss = ss_();
   ensureTab_(ss, TABS.ITEMS, ITEM_COLS);
+  ensureTab_(ss, TABS.FOLLOWUPS, FU_COLS);
   var br = ensureTab_(ss, TABS.BRANCHES, BRANCH_COLS);
   if (br.getLastRow() < 2) {
     br.getRange(2, 1, BRANCH_LIST.length, 4).setValues(BRANCH_LIST.map(function (b) { return [b[0], b[1], '', '']; }));
@@ -177,8 +184,17 @@ function ss_() {
 
 // ============================================================ ROUTING
 function doGet(e) {
-  // Public health check. No customer data.
-  return json_({ ok: true, service: 'Loan Tracking API', version: 1 });
+  // Switch reminders on by itself once the Tasks permission has been granted in the editor
+  // (tries at most every 2 minutes until it works).
+  if (props_().getProperty('CAL_ON') !== '1' && props_().getProperty('SETUP_DONE') === '1' && !CacheService.getScriptCache().get('cal_auto')) {
+    CacheService.getScriptCache().put('cal_auto', '1', 120);
+    try { setupTasks(); }
+    catch (err) { props_().setProperty('CAL_LAST_RESULT', 'setup error: ' + String(err && err.message || err).slice(0, 200)); }
+  }
+  // Public health check. Counts only, no customer data.
+  var p = props_().getProperties();
+  return json_({ ok: true, service: 'Loan Tracking API', version: 1,
+    reminders: { on: p.CAL_ON === '1', kind: 'Google Tasks', tasks: Object.keys(p).filter(function (k) { return k.indexOf('task:') === 0; }).length, lastSync: p.CAL_LAST || null, lastResult: p.CAL_LAST_RESULT || null } });
 }
 
 function doPost(e) {
@@ -197,8 +213,9 @@ function doPost(e) {
 
     switch (action) {
       case 'bootstrap':    return json_(bootstrap_(user, req.since));
-      case 'saveProposal':   lock.waitLock(20000); return json_(saveItem_(user, req.item));
-      case 'deleteProposal': lock.waitLock(20000); return json_(deleteItem_(user, req.id));
+      case 'saveProposal':   lock.waitLock(20000); return json_(afterWrite_(saveItem_(user, req.item), req.item && req.item.id));
+      case 'deleteProposal': lock.waitLock(20000); return json_(afterWrite_(deleteItem_(user, req.id), req.id));
+      case 'saveFollowup':   lock.waitLock(20000); return json_(saveFollowup_(user, req.followup));
       case 'saveSettings': lock.waitLock(20000); return json_(saveSettings_(user, req.settings));
       case 'saveUsers':    lock.waitLock(20000); return json_(saveUsers_(user, req.users, req.baseline));
       case 'changePin':    lock.waitLock(20000); return json_(changePin_(user, req.oldPin, req.newPin));
@@ -349,8 +366,13 @@ function bootstrap_(user, since) {
       return o;
     });
 
+  // Follow-ups are short and few, so they are always sent in full.
+  var followups = readTab_(TABS.FOLLOWUPS, FU_COLS).filter(function (f) { return f.id && String(f.deleted).toUpperCase() !== 'TRUE'; })
+    .map(normalizeFu_);
+
   return { ok: true, delta: delta, user: user, items: items, removed: removed, users: users, settings: readSettings_(),
-    branches: readBranches_(), desks: readDesks_(), serverTime: new Date().toISOString() };
+    branches: readBranches_(), desks: readDesks_(), followups: followups,
+    reminders: { on: calOn_(), name: TASK_LIST }, serverTime: new Date().toISOString() };
 }
 
 // Small tabs, sent in full on every sync so a BM typed into the Sheet shows up at once.
@@ -370,6 +392,16 @@ function normalizeItem_(r) {
   ITEM_COLS.forEach(function (c) { out[c] = r[c] == null ? '' : r[c]; });
   NUM_COLS.forEach(function (c) { out[c] = Number(r[c]) || 0; });
   DATE_COLS.forEach(function (c) { out[c] = toDateStr_(r[c]); });
+  out.createdAt = toIso_(r.createdAt);
+  out.updatedAt = toIso_(r.updatedAt);
+  delete out.deleted;
+  return out;
+}
+
+function normalizeFu_(r) {
+  var out = {};
+  FU_COLS.forEach(function (c) { out[c] = r[c] == null ? '' : String(r[c]); });
+  FU_DATE_COLS.forEach(function (c) { out[c] = toDateStr_(r[c]); });
   out.createdAt = toIso_(r.createdAt);
   out.updatedAt = toIso_(r.updatedAt);
   delete out.deleted;
@@ -457,6 +489,25 @@ function deleteItem_(user, id) {
   return { ok: true };
 }
 
+// Upsert by id, like saveItem_. The phone sends the follow-up first and the updated proposal after it.
+function saveFollowup_(user, fu) {
+  if (!fu || !fu.id || !fu.proposalId) return { ok: false, message: 'Missing follow-up.' };
+  var sh = ss_().getSheetByName(TABS.FOLLOWUPS);
+  var ids = sh.getLastRow() > 1 ? sh.getRange(2, 1, sh.getLastRow() - 1, 1).getValues() : [];
+  var row = -1;
+  for (var i = 0; i < ids.length; i++) if (String(ids[i][0]) === String(fu.id)) { row = i + 2; break; }
+  var now = new Date().toISOString();
+  var rec = {};
+  FU_COLS.forEach(function (c) { rec[c] = fu[c] == null ? '' : fu[c]; });
+  rec.updatedAt = now; rec.deleted = '';
+  rec.createdAt = fu.createdAt || now;
+  rec.createdBy = user.name;
+  var values = FU_COLS.map(function (c) { return rec[c]; });
+  if (row < 0) sh.appendRow(values); else sh.getRange(row, 1, 1, FU_COLS.length).setValues([values]);
+  log_(user.name, 'follow-up', 'proposal', rec.proposalId, String(rec.note).slice(0, 120));
+  return { ok: true, followup: normalizeFu_(rec) };
+}
+
 function saveSettings_(user, settings) {
   if (user.role !== 'Admin') return { ok: false, message: 'Only an Admin can change settings.' };
   writeSettings_(settings);
@@ -527,6 +578,160 @@ function saveUsers_(user, users, baseline) {
   if (rows.length) sh.getRange(2, 1, rows.length, USER_COLS.length).setValues(rows);
   log_(user.name, 'update', 'users', '', rows.length + ' logins');
   return { ok: true };
+}
+
+function todayStr_() { return Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd'); }
+
+// ============================================================ GOOGLE TASKS REMINDERS
+// (adapted from Loan CRM) Every live proposal with a next follow-up date gets one task in the
+// "Loan Pipeline" list of the Google account that owns this script, due on that date. Google
+// Tasks shows it in the Tasks app and in Google Calendar and notifies on the day. Moving the date
+// moves the task; disbursed / rejected ticks it off; clearing the date or deleting removes it.
+// Saves update it at once; a 15-minute trigger re-checks everything (so Sheet edits are picked up).
+// Needs the Google Tasks permission, granted once by running setupTasks from the editor.
+var TASK_LIST = 'Loan Pipeline';
+var TASK_MAX_CHANGES = 60;        // per run — Google throttles bursts of writes
+var APP_URL = 'https://anmolbage.github.io/loan-tracking/';
+var HOLDER_OF = { 'Lead': 'branch', 'Docs pending': 'branch', 'Received AMH': 'officer', 'Processing': 'officer',
+  'Query': 'branch', 'With AMH Head': 'head', 'Sanctioned': 'branch' };
+var DESK_OF_SEGMENT = { personal: 'personal', sme: 'sme', agri: 'agri' };
+
+function setupTasks() {
+  taskList_();                                      // create it now, so permission is asked here
+  props_().setProperty('CAL_ON', '1');
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'syncTasks') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('syncTasks').timeBased().everyMinutes(15).create();
+  var r = syncTasks();
+  Logger.log('Follow-up reminders are ON. Google Tasks list "' + TASK_LIST + '": ' + r.events + ' follow-ups, ' + r.changes + ' tasks written.' +
+             (r.pending ? ' ' + r.pending + ' more will be added over the next runs.' : ''));
+  return r;
+}
+
+function calOn_() { return props_().getProperty('CAL_ON') === '1'; }
+
+function taskList_() {
+  var id = props_().getProperty('TASK_LIST_ID');
+  if (id) { try { Tasks.Tasklists.get(id); return id; } catch (e) { /* deleted by hand: find or recreate */ } }
+  var lists = (Tasks.Tasklists.list({ maxResults: 100 }).items || []).filter(function (l) { return l.title === TASK_LIST; });
+  id = lists.length ? lists[0].id : Tasks.Tasklists.insert({ title: TASK_LIST }).id;
+  props_().setProperty('TASK_LIST_ID', id);
+  return id;
+}
+
+// After a proposal is saved or deleted, bring its task up to date. Tasks trouble never fails the save.
+function afterWrite_(result, id) {
+  if (!result || result.ok === false || !id || !calOn_()) return result;
+  try { syncTasks_(String(id)); }
+  catch (err) { log_('system', 'tasks-error', 'proposal', id, String(err && err.message || err)); }
+  return result;
+}
+
+// Trigger entry point (every 15 minutes) and manual re-sync.
+function syncTasks() {
+  if (!calOn_()) return { changes: 0, events: 0, pending: 0 };
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var r = syncTasks_(null);
+    props_().setProperties({ CAL_LAST: new Date().toISOString(), CAL_LAST_RESULT: r.events + ' follow-ups, ' + r.changes + ' written, ' + r.pending + ' pending' });
+    return r;
+  } catch (err) {
+    props_().setProperties({ CAL_LAST: new Date().toISOString(), CAL_LAST_RESULT: 'error: ' + String(err && err.message || err).slice(0, 200) });
+    throw err;
+  } finally { lock.releaseLock(); }
+}
+
+// Tasks that carry "Proposal ID: x" in their notes, so a task made earlier is adopted, not duplicated.
+function tasksById_(listId) {
+  var out = {}, token;
+  do {
+    var page = Tasks.Tasks.list(listId, { maxResults: 100, showCompleted: true, showHidden: true, pageToken: token });
+    (page.items || []).forEach(function (t) {
+      var m = /Proposal ID: (\S+)/.exec(String(t.notes || ''));
+      if (m && !out[m[1]]) out[m[1]] = t.id;
+    });
+    token = page.nextPageToken;
+  } while (token);
+  return out;
+}
+
+function syncTasks_(onlyId) {
+  var listId = taskList_();
+  var branches = {}, desks = {};
+  readBranches_().forEach(function (b) { branches[b.code] = b; });
+  readDesks_().forEach(function (d) { desks[d.key] = d; });
+  var store = props_(), all = store.getProperties(), today = todayStr_();
+  var seen = {}, changes = 0, events = 0, pending = 0, byId = null;
+  var get = function (taskId) { try { return Tasks.Tasks.get(listId, taskId); } catch (e) { return null; } };
+  var remove = function (taskId) { try { Tasks.Tasks.remove(listId, taskId); } catch (e) { /* already gone */ } };
+
+  readTab_(TABS.ITEMS, ITEM_COLS).forEach(function (l) {
+    var id = String(l.id || '');
+    if (!id || (onlyId && id !== onlyId)) return;
+    seen[id] = true;
+    var key = 'task:' + id, cur = all[key] ? JSON.parse(all[key]) : null;
+    var date = toDateStr_(l.nextFollowup);
+    var deleted = String(l.deleted).toUpperCase() === 'TRUE';
+    var isClosed = !!CLOSED_STAGES[String(l.stage)];
+
+    if (!date || deleted) {
+      if (cur) { remove(cur.t); store.deleteProperty(key); changes++; }
+      return;
+    }
+    if (isClosed) {
+      if (cur && cur.s !== 'closed') {
+        if (changes >= TASK_MAX_CHANGES) { pending++; return; }
+        try { Tasks.Tasks.patch({ status: 'completed' }, listId, cur.t); } catch (e) {}
+        store.setProperty(key, JSON.stringify({ t: cur.t, s: 'closed' })); changes++;
+      }
+      return;
+    }
+    events++;
+    if (!cur && date < today) return;                // never create tasks for days already gone
+
+    var b = branches[Number(l.branchCode)] || {};
+    var holder = HOLDER_OF[String(l.stage)] || 'branch';
+    var who = holder === 'branch' ? { name: (b.bmName || 'BM') + ', ' + (b.name || l.branchName), mobile: b.bmMobile }
+      : holder === 'head' ? (desks.head || {}) : (desks[DESK_OF_SEGMENT[l.segment]] || {});
+    var whoName = who.name || who.title || '';
+    var mobile = String(who.mobile || '').replace(/\D/g, '');
+    var title = 'Follow up: ' + l.borrower + ' (' + (b.name || l.branchName) + ') · ' + l.stage;
+    var notes = [
+      l.product + ' · ₹' + l.amount + ' lakh · ' + l.stage,
+      'File is with: ' + whoName + (mobile ? ' · ' + mobile : ''),
+      l.remarks ? 'Latest: ' + String(l.remarks).slice(0, 400) : '',
+      '',
+      mobile ? 'Call: tel:' + mobile : '',
+      'Open Loan Tracking: ' + APP_URL,
+      'Proposal ID: ' + id
+    ].filter(function (x, i) { return x !== '' || i === 3; }).join('\n');
+    var sig = Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, [date, title, notes].join('|')));
+    if (cur && cur.s === sig) return;
+    if (changes >= TASK_MAX_CHANGES) { pending++; return; }
+
+    var body = { title: title, notes: notes, due: date + 'T00:00:00.000Z', status: 'needsAction' };
+    var taskId = cur && cur.t;
+    if (!taskId) {
+      if (!byId) byId = tasksById_(listId);
+      taskId = byId[id] || null;
+    }
+    if (taskId && get(taskId)) Tasks.Tasks.patch(body, listId, taskId);
+    else taskId = Tasks.Tasks.insert(body, listId).id;
+    store.setProperty(key, JSON.stringify({ t: taskId, s: sig }));
+    changes++;
+  });
+
+  if (!onlyId) {                                      // rows removed from the Sheet by hand
+    Object.keys(all).forEach(function (k) {
+      if (k.indexOf('task:') === 0 && !seen[k.slice(5)]) {
+        try { remove(JSON.parse(all[k]).t); } catch (e) {}
+        store.deleteProperty(k); changes++;
+      }
+    });
+  }
+  return { changes: changes, events: events, pending: pending };
 }
 
 function log_(by, action, entity, entityId, detail) {

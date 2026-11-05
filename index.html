@@ -60,17 +60,7 @@
 
     <div id="homeBanner"></div>
 
-    <!-- The one job's headline number goes here -->
-    <div class="hero">
-      <div class="label">Live pipeline</div>
-      <div class="value" id="kpiTotal">₹0</div>
-      <div class="note" id="kpiNote">0 live proposals</div>
-    </div>
-
-    <div class="sec">
-      <div class="sec-head"><h2>Recently updated</h2><span class="link" data-go="items">View all</span></div>
-      <div class="list" id="homeList"></div>
-    </div>
+    <div id="homeBody"></div>
   </section>
 
   <!-- ---------- ITEMS ---------- -->
@@ -90,6 +80,21 @@
     <div class="chips" id="statusChips"></div>
     <div style="padding:0 18px 10px;font-size:12.5px;color:var(--text-3);font-weight:600" id="itemCount"></div>
     <div class="list" id="itemList"></div>
+  </section>
+
+  <!-- ---------- CHASE ---------- -->
+  <section class="screen" id="s-chase">
+    <div class="topbar"><h1>Chase</h1></div>
+    <div class="searchbar">
+      <div class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
+        <input id="chaseSearch" placeholder="Search borrower, branch, product…" autocomplete="off">
+      </div>
+    </div>
+    <div class="chips" id="chaseSeg"></div>
+    <div class="chips" id="chaseChips"></div>
+    <div style="padding:0 18px 10px;font-size:12.5px;color:var(--text-3);font-weight:600" id="chaseNote"></div>
+    <div class="list" id="chaseList"></div>
   </section>
 
   <!-- ---------- MORE ---------- -->
@@ -117,12 +122,16 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
       <span>Home</span>
     </button>
-    <button data-go="items">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
-      <span>Proposals</span>
+    <button data-go="chase" style="position:relative">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      <span>Chase</span><b class="nbadge hidden" id="chaseBadge">0</b>
     </button>
     <button class="fab" id="addBtn" aria-label="Add proposal">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+    <button data-go="items">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+      <span>Proposals</span>
     </button>
     <button data-go="more">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
