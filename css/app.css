@@ -504,3 +504,15 @@ details.acc .acc-body{padding:0 16px 16px}
 .btn svg{width:17px;height:17px;flex:none}
 #homeBody .chips{padding-left:18px}
 .ph,.stat{border:0;font:inherit;color:inherit;cursor:pointer}
+
+/* user manual */
+.man{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);margin-bottom:10px;overflow:hidden}
+.man summary{list-style:none;cursor:pointer;padding:14px 16px;font-weight:650;font-size:15px;display:flex;justify-content:space-between;align-items:center}
+.man summary::-webkit-details-marker{display:none}
+.man summary::after{content:'+';font-size:20px;color:var(--brand-2);font-weight:600}
+.man[open] summary::after{content:'–'}
+.man-b{padding:0 16px 14px;font-size:14px;line-height:1.55;color:var(--text)}
+.man-b p{margin:0 0 10px}.man-b ul,.man-b ol{margin:0 0 10px;padding-left:20px}.man-b li{margin-bottom:5px}
+.man-t{width:100%;border-collapse:collapse;font-size:13.5px;margin-bottom:10px}
+.man-t th,.man-t td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line)}
+.man-t th{font-size:11.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3)}

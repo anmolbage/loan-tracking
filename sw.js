@@ -1,5 +1,5 @@
 /* Loan Tracking — service worker (app shell cache, offline first) */
-const CACHE = 'loan-tracking-v0.3.0';   // bump with VERSION in js/config.js on every release
+const CACHE = 'loan-tracking-v0.4.0';   // bump with VERSION in js/config.js on every release
 const SHELL = [
   './',
   './index.html',
@@ -7,6 +7,7 @@ const SHELL = [
   './css/app.css',
   './js/config.js',
   './js/store.js',
+  './js/manual.js',
   './js/app.js',
   './icons/icon-192.png',
   './icons/icon-512.png'

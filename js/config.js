@@ -11,7 +11,7 @@ window.APP_CONFIG = {
   API_URL: 'PASTE_YOUR_APPS_SCRIPT_URL_HERE',
 
   APP_NAME: 'Loan Tracking',
-  VERSION: '0.3.0',          // bump together with CACHE in sw.js on every release
+  VERSION: '0.4.0',          // bump together with CACHE in sw.js on every release
 
   // Short prefix for this app's browser storage, so two apps on the same
   // GitHub Pages domain never read each other's login or cache.
