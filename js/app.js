@@ -50,7 +50,7 @@ function prettyTime(iso) {
   return dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ' · ' +
          dt.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
 }
-const initials = n => String(n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+const initials = n => (String(n || '?').replace(/[^A-Za-z\s]/g, ' ').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('') || '?').toUpperCase();
 const sum = (arr, k = 'amount') => arr.reduce((s, x) => s + (Number(x[k]) || 0), 0);
 
 const ICON = {
