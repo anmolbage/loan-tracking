@@ -277,7 +277,7 @@ function showDialog_(pin, url, tasks, deployErr) {
 function doGet(e) {
   // Switch reminders on by itself once the Tasks permission has been granted in the editor
   // (tries at most every 2 minutes until it works).
-  if (props_().getProperty('CAL_ON') !== '1' && props_().getProperty('SETUP_DONE') === '1' && !CacheService.getScriptCache().get('cal_auto')) {
+  if (props_().getProperty('CAL_ON') !== '1' && props_().getProperty('SETUP_DONE') === '1' && !remindersHeld_() && !CacheService.getScriptCache().get('cal_auto')) {
     CacheService.getScriptCache().put('cal_auto', '1', 120);
     try { setupTasks(); }
     catch (err) { props_().setProperty('CAL_LAST_RESULT', 'setup error: ' + String(err && err.message || err).slice(0, 200)); }
@@ -285,7 +285,7 @@ function doGet(e) {
   // Public health check. Counts only, no customer data.
   var p = props_().getProperties();
   return json_({ ok: true, service: 'Loan Tracking API', version: 1,
-    reminders: { on: p.CAL_ON === '1', kind: 'Google Tasks', tasks: Object.keys(p).filter(function (k) { return k.indexOf('task:') === 0; }).length, lastSync: p.CAL_LAST || null, lastResult: p.CAL_LAST_RESULT || null } });
+    reminders: { on: calOn_(), hold: remindersHeld_(), kind: 'Google Tasks', tasks: Object.keys(p).filter(function (k) { return k.indexOf('task:') === 0; }).length, lastSync: p.CAL_LAST || null, lastResult: p.CAL_LAST_RESULT || null } });
 }
 
 function doPost(e) {
@@ -463,7 +463,7 @@ function bootstrap_(user, since) {
 
   return { ok: true, delta: delta, user: user, items: items, removed: removed, users: users, settings: readSettings_(),
     branches: readBranches_(), desks: readDesks_(), followups: followups,
-    reminders: { on: calOn_(), name: TASK_LIST }, serverTime: new Date().toISOString() };
+    reminders: { on: calOn_(), hold: remindersHeld_(), name: TASK_LIST }, serverTime: new Date().toISOString() };
 }
 
 // Small tabs, sent in full on every sync so a BM typed into the Sheet shows up at once.
@@ -700,7 +700,10 @@ function setupTasks() {
   return r;
 }
 
-function calOn_() { return props_().getProperty('CAL_ON') === '1'; }
+// Settings tab key `reminders` = hold switches Google Tasks off without losing the setup
+// (used while the demo runs in the support person's account). Any other value lets them run.
+function remindersHeld_() { try { return String(readSettings_().reminders || '').toLowerCase() === 'hold'; } catch (e) { return false; } }
+function calOn_() { return props_().getProperty('CAL_ON') === '1' && !remindersHeld_(); }
 
 function taskList_() {
   var id = props_().getProperty('TASK_LIST_ID');

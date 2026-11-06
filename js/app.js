@@ -656,7 +656,7 @@ function renderMore() {
     { k: 'manual', i: ICON.book, t: 'User manual', s: 'How to use this app, step by step' },
     { k: 'sync', i: ICON.cloud, t: 'Sync now', s: Store.queue.length ? Store.queue.length + ' pending change(s)' : 'Everything is up to date' },
     { k: 'export', i: ICON.down, t: 'Export CSV', s: 'Download the proposals currently on screen' },
-    { k: 'reminders', i: ICON.bell, t: 'Follow-up reminders', s: Store.reminders && Store.reminders.on ? 'On · Google Tasks list "' + Store.reminders.name + '"' : 'Off · run setupTasks in the script editor (see README)' },
+    { k: 'reminders', i: ICON.bell, t: 'Follow-up reminders', s: Store.reminders && Store.reminders.on ? 'On · Google Tasks list "' + Store.reminders.name + '"' : Store.reminders && Store.reminders.hold ? 'On hold for now · Chase shows what is due' : 'Off · ask support to switch them on' },
     isAdmin ? { k: 'staff', i: ICON.users, t: 'Logins & PINs', s: Store.users.length + ' login' + (Store.users.length === 1 ? '' : 's') } : null,
     { k: 'pin', i: ICON.key, t: 'Change my PIN', s: 'Keep your account secure' },
     { k: 'theme', i: ICON.moon, t: 'Dark mode', s: dark ? 'On' : 'Follows your phone', toggle: dark },
@@ -679,7 +679,7 @@ document.addEventListener('click', async e => {
   if (k === 'sync') { await doSync(); }
   if (k === 'export') exportCSV();
   if (k === 'connect') toast('To connect another Sheet: sign out, then open the new installer link');
-  if (k === 'reminders') toast(Store.reminders && Store.reminders.on ? 'Each follow-up date is a task in Google Tasks' : 'Ask Anmol to run setupTasks once in the Apps Script editor');
+  if (k === 'reminders') toast(Store.reminders && Store.reminders.on ? 'Each follow-up date is a task in Google Tasks' : 'Phone reminders are on hold. Open Chase → Due & overdue each morning.');
   if (k === 'staff') editStaff();
   if (k === 'pin') changePin();
   if (k === 'sheet') window.open(CFG.SHEET_URL, '_blank');

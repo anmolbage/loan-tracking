@@ -105,7 +105,10 @@ window.manualHtml = function (s) {
     <p><b>Ask status</b> opens WhatsApp with a polite status enquiry already written. You can change the text before sending.</p>
     <p>Numbers come from the Sheet (Branches and Desks tabs). If a BM or officer changes, update the Sheet and the app picks it up on the next sync.</p>`)}
 
-  ${sec('Reminders', `
+  ${sec('Reminders', s.reminders === 'hold' ? `
+    <p><b>Phone reminders are on hold for now.</b> Open <b>Chase → Due &amp; overdue</b> each morning: it lists
+    every file whose follow-up date has come. The red number on the Chase button shows how many.</p>
+    <p>Later, each follow-up date will also become a Google Tasks reminder on your phone.</p>` : `
     <p>Each next follow-up date becomes a task in <b>Google Tasks</b> (list "Loan Pipeline"), so the phone reminds
     on that day. Moving the date moves the task; a disbursed or rejected file ticks it off.</p>
     <p>More → <b>Follow-up reminders</b> shows whether they are on.</p>`)}
