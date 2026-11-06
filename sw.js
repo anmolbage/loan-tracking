@@ -1,5 +1,5 @@
 /* Loan Tracking — service worker (app shell cache, offline first) */
-const CACHE = 'loan-tracking-v0.6.0';   // bump with VERSION in js/config.js on every release
+const CACHE = 'loan-tracking-v0.6.1';   // bump with VERSION in js/config.js on every release
 const SHELL = [
   './',
   './index.html',
@@ -9,8 +9,8 @@ const SHELL = [
   './js/store.js',
   './js/manual.js',
   './js/app.js',
-  './icons/icon-192.png',
-  './icons/icon-512.png'
+  './icons/bank-192.png',
+  './icons/bank-512.png'
 ];
 
 self.addEventListener('install', e => {
