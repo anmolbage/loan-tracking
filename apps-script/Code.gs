@@ -172,7 +172,7 @@ function ensureTab_(ss, name, cols) {
     sh.getRange(1, 1, 1, cols.length).setValues([cols]);
   }
   sh.getRange(1, 1, 1, cols.length)
-    .setFontWeight('bold').setBackground('#0f2a4a').setFontColor('#ffffff');
+    .setFontWeight('bold').setBackground('#133d2e').setFontColor('#ffffff');
   sh.setFrozenRows(1);
   return sh;
 }
