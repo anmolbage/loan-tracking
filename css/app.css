@@ -572,3 +572,12 @@ table.rep{width:100%;border-collapse:collapse;font-size:13px}
 .rep td.n{text-align:right;font-weight:700;white-space:nowrap}
 .rep td.n small{display:block;font-weight:500;color:var(--text-3);font-size:11px}
 .rep td.bad{color:var(--danger)}
+
+/* contact cards: 3 buttons; desk chips on Home */
+.btn-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px}
+.btn-row3 .btn{padding:11px 6px;font-size:12.5px;gap:5px;flex-direction:column;line-height:1.2;text-align:center}
+.desks{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.desk{background:var(--surface);border:0;border-radius:var(--r);box-shadow:var(--shadow);padding:10px 8px;text-align:left;font:inherit;color:inherit;cursor:pointer;min-width:0}
+.desk span{display:block;font-size:10.5px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.3px;line-height:1.2}
+.desk b{display:block;font-size:20px;font-weight:750;color:var(--brand-2);margin:3px 0 1px}
+.desk small{display:block;font-size:10.5px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

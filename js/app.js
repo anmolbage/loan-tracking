@@ -67,6 +67,7 @@ const ICON = {
   phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.4 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.4 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>',
   wa: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3.1.8.8-3-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.4-.7-1.7-.8s-.4-.1-.5.1-.6.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.6-1.2a.4.4 0 0 0 0-.4L9.5 7.9c-.2-.5-.4-.4-.5-.4h-.5a1 1 0 0 0-.7.3A2.9 2.9 0 0 0 7 10a5.1 5.1 0 0 0 1 2.6 11.5 11.5 0 0 0 4.5 4 5.1 5.1 0 0 0 3.1.6 2.6 2.6 0 0 0 1.7-1.2 2.1 2.1 0 0 0 .2-1.2c-.1-.1-.3-.2-.5-.3z"/></svg>',
   book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h7M9 11h5"/></svg>',
+  copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
   chart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15v3M12 10v8M17 6v12"/></svg>',
   box: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="m21 16-9 5-9-5V8l9-5 9 5z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg>',
   bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>',
@@ -341,6 +342,8 @@ function renderHome() {
       <div class="sec-head"><h2>Where the files are</h2><span class="link" data-chase="late">Chase</span></div>
       <div class="split">${tile('branch', 'With branches', 'to chase')}${tile('officer', 'With processing officers', 'processing')}${tile('head', 'With AMH Head', 'for sanction')}</div>
     </div>
+    <div class="sec" style="margin-top:-10px"><div class="desks">${DESK_KEYS.map(k => { const ls = live.filter(p => deskOf(p) === k), d = deskInfo(k);
+      return `<button class="desk" data-pdesk="${k}"><span>${esc(k === 'head' ? 'AMH Head' : SEG[k] + ' officer')}</span><b>${ls.length}</b><small>${esc(d.name || '—')}</small></button>`; }).join('')}</div></div>
     ${whyStuck(live)}
     <div class="sec">
       <div class="sec-head"><h2>By stage</h2><span class="link" data-go="items">View all</span></div>
@@ -360,9 +363,11 @@ document.addEventListener('click', e => {
   const s = e.target.closest('[data-pstage]');
   if (s) { filters.stage = s.dataset.pstage; filters.branch = ''; go('items'); return; }
   const b = e.target.closest('[data-pbranch]');
-  if (b) { filters.branch = b.dataset.pbranch; filters.stage = ''; filters.reason = ''; go('items'); return; }
+  if (b) { filters.branch = b.dataset.pbranch; filters.stage = ''; filters.reason = ''; filters.desk = ''; go('items'); return; }
+  const dk = e.target.closest('[data-pdesk]');
+  if (dk) { filters.desk = dk.dataset.pdesk; filters.branch = ''; filters.stage = ''; filters.reason = ''; go('items'); return; }
   const r = e.target.closest('[data-preason]');
-  if (r) { filters.reason = r.dataset.preason; filters.stage = ''; filters.branch = ''; go('items'); return; }
+  if (r) { filters.reason = r.dataset.preason; filters.stage = ''; filters.branch = ''; filters.desk = ''; go('items'); return; }
   if (e.target.closest('[data-brall]')) { showAllBranches = !showAllBranches; renderHome(); }
 });
 
@@ -488,7 +493,7 @@ $('#chaseSearch').addEventListener('input', e => { chaseQ = e.target.value; rend
 /* ============================================================
    PROPOSALS — list, search, filter
    ============================================================ */
-const filters = { q: '', stage: '', branch: '', reason: '' };
+const filters = { q: '', stage: '', branch: '', reason: '', desk: '' };
 
 function itemCard(p) {
   return `<button class="item" data-item="${esc(p.id)}" style="--acc:var(--seg-${esc(p.segment || 'personal')})">
@@ -515,6 +520,7 @@ function filteredItems() {
     .filter(p => !filters.stage || p.stage === filters.stage)
     .filter(p => !filters.branch || Number(p.branchCode) === Number(filters.branch))
     .filter(p => !filters.reason || (isLive(p) && p.reason === filters.reason))
+    .filter(p => !filters.desk || (isLive(p) && deskOf(p) === filters.desk))
     .filter(p => !q || [p.borrower, branchName(p), p.branchCode, p.product, p.stage, p.remarks].join(' ').toLowerCase().includes(q))
     .sort((a, b) => (isLive(b) - isLive(a)) || String(b.updatedAt).localeCompare(String(a.updatedAt)));
 }
@@ -524,27 +530,51 @@ function renderItems() {
   Store.items.forEach(p => { counts[p.stage] = (counts[p.stage] || 0) + 1; });
   const fb = filters.branch ? Store.branch(filters.branch) : null;
   $('#statusChips').innerHTML = (fb ? `<button class="chip on" data-clearbranch="1">${esc(fb.name)} ✕</button>` : '') +
-    (filters.reason ? `<button class="chip on" data-clearreason="1">${esc(filters.reason)} ✕</button>` : '') + [{ id: '', name: 'All' }, ...STAGES].map(s =>
+    (filters.reason ? `<button class="chip on" data-clearreason="1">${esc(filters.reason)} ✕</button>` : '') +
+    (filters.desk ? `<button class="chip on" data-cleardesk="1">${esc(deskInfo(filters.desk).title)} ✕</button>` : '') + [{ id: '', name: 'All' }, ...STAGES].map(s =>
     `<button class="chip${filters.stage === s.id ? ' on' : ''}" data-stage="${esc(s.id)}">${esc(s.id ? s.id : 'All')}${s.id ? ' · ' + (counts[s.id] || 0) : ''}</button>`).join('');
   const list = filteredItems();
   $('#itemCount').textContent = list.length + ' proposal' + (list.length === 1 ? '' : 's') + ' · ' + lakh(sum(list));
-  $('#itemList').innerHTML = (fb ? branchCard(fb) : '') + (list.length ? list.map(itemCard).join('')
+  $('#itemList').innerHTML = (fb ? branchCard(fb) : filters.desk ? deskCard(filters.desk) : '') + (list.length ? list.map(itemCard).join('')
     : (Store.syncing && !Store.items.length ? syncBanner() : emptyBlock('No proposals', 'Nothing matches this filter.')));
 }
 
 // Branch view: BM contact and one WhatsApp listing every pending file of the branch
+// One contact card (BM, processing officer or AMH Head): Call · WhatsApp · Copy message
+let cardText = '';
+function contactCard({ role, name, sub, mobile, live, text, waLabel, callLabel }) {
+  const mob = digits10(mobile);
+  cardText = text;
+  return `<div class="card bmcard">
+    <div class="bm-top"><div><div class="card-title" style="margin:0">${esc(role)}</div>
+      <b>${esc(name)}</b><div class="sub" style="margin:2px 0 0">${esc(sub)}${mobile ? ' · ' + esc(mobile) : ''}</div></div>
+      <div class="bm-n"><b>${live.length}</b><span>${lakh(sum(live))} live</span></div></div>
+    <div class="btn-row3">
+      ${mob ? `<a class="btn ghost" href="tel:+91${mob}">${ICON.phone} ${esc(callLabel)}</a>` : `<button class="btn ghost" disabled>${ICON.phone} No mobile</button>`}
+      <a class="btn ghost" style="color:#128c7e" target="_blank" rel="noopener" href="https://wa.me/${mob ? '91' + mob : ''}?text=${encodeURIComponent(text)}">${ICON.wa} ${esc(waLabel)}</a>
+      <button class="btn ghost" data-copycard="1">${ICON.copy} Copy message</button>
+    </div></div>`;
+}
 function branchCard(b) {
   const live = byAge(Store.items.filter(p => isLive(p) && Number(p.branchCode) === Number(b.code)));
-  const mob = digits10(b.bmMobile);
-  return `<div class="card bmcard">
-    <div class="bm-top"><div><div class="card-title" style="margin:0">Branch Manager</div>
-      <b>${esc(b.bmName || 'Not in the Branches tab')}</b><div class="sub" style="margin:2px 0 0">${esc(b.name)} (${b.code})${b.bmMobile ? ' · ' + esc(b.bmMobile) : ''}</div></div>
-      <div class="bm-n"><b>${live.length}</b><span>${lakh(sum(live))} live</span></div></div>
-    <div class="btn-row" style="margin-top:12px">
-      ${mob ? `<a class="btn ghost" href="tel:+91${mob}">${ICON.phone} Call BM</a>` : `<button class="btn ghost" disabled>${ICON.phone} No mobile</button>`}
-      ${live.length ? `<a class="btn ghost" style="color:#128c7e" target="_blank" rel="noopener" href="https://wa.me/${mob ? '91' + mob : ''}?text=${encodeURIComponent(bmListText(b, live))}">${ICON.wa} WhatsApp list</a>`
-        : `<a class="btn ghost" style="color:#128c7e" target="_blank" rel="noopener" href="https://wa.me/${mob ? '91' + mob : ''}?text=${encodeURIComponent(bmNudgeText(b))}">${ICON.wa} Ask for leads</a>`}
-    </div></div>`;
+  return contactCard({ role: 'Branch Manager', name: b.bmName || 'Not in the Branches tab', sub: b.name + ' (' + b.code + ')', mobile: b.bmMobile,
+    live, text: live.length ? bmListText(b, live) : bmNudgeText(b), waLabel: live.length ? 'WhatsApp list' : 'Ask for leads', callLabel: 'Call BM' });
+}
+// Desk = a processing officer (by segment) or the AMH Head; files they hold right now
+const DESK_KEYS = ['personal', 'sme', 'agri', 'head'];
+const deskOf = p => { const h = holderOf(p); return h === 'head' ? 'head' : (h === 'officer' || h === 'note') ? p.segment : ''; };
+const deskInfo = k => Store.desk(k) || { key: k, title: k === 'head' ? 'AMH Head' : (SEG[k] || '') + ' Officer', name: '', mobile: '' };
+function deskCard(k) {
+  const d = deskInfo(k), live = byAge(Store.items.filter(p => isLive(p) && deskOf(p) === k));
+  return contactCard({ role: k === 'head' ? 'AMH Head' : 'Processing officer · ' + SEG[k], name: d.name || d.title, sub: k === 'head' ? 'Sanction' : SEG[k] + ' segment',
+    mobile: d.mobile, live, text: deskListText(k, d, live), waLabel: 'WhatsApp list', callLabel: k === 'head' ? 'Call AMH Head' : 'Call officer' });
+}
+function deskListText(k, d, live) {
+  const who = d.name || d.title;
+  if (!live.length) return `Dear ${who},\nNo loan proposal is pending with you at present as per my list. Kindly let me know if any file is with you.\n– Regional Manager, ${CFG.OFFICE_NAME}`;
+  return `Dear ${who},\nStatus of loan proposals pending with you${k === 'head' ? ' for sanction' : ' (' + SEG[k] + ' segment)'} as on ${longDate()}:\n` +
+    live.map((p, i) => `${i + 1}. ${p.borrower} (${branchName(p)}) – ${p.product} ${lakh(p.amount)} – ${stageDef(p.stage).name} (${holderDays(p)} days)${p.reason ? ' – ' + p.reason : ''}`).join('\n') +
+    `\n\nKindly share the expected date for each.\n– Regional Manager, ${CFG.OFFICE_NAME}`;
 }
 function bmListText(b, live) {
   return `Dear ${b.bmName || 'Branch Manager'} (${b.name} branch),\nStatus of your branch's loan proposals as on ${longDate()}:\n` +
@@ -558,6 +588,8 @@ $('#searchInput').addEventListener('input', e => { filters.q = e.target.value; r
 document.addEventListener('click', e => {
   if (e.target.closest('[data-clearbranch]')) { filters.branch = ''; renderItems(); return; }
   if (e.target.closest('[data-clearreason]')) { filters.reason = ''; renderItems(); return; }
+  if (e.target.closest('[data-cleardesk]')) { filters.desk = ''; renderItems(); return; }
+  if (e.target.closest('[data-copycard]')) { copyText(cardText); return; }
   const c = e.target.closest('[data-stage]');
   if (c) { filters.stage = c.dataset.stage; renderItems(); return; }
   const it = e.target.closest('[data-item]');
@@ -835,6 +867,11 @@ document.addEventListener('click', async e => {
     renderMore();
   }
 });
+
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); toast('Message copied', 'ok'); }
+  catch (err) { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); toast('Message copied', 'ok'); } catch (e2) { toast('Could not copy', 'err'); } ta.remove(); }
+}
 
 /* ---------------- reports: processing time + monthly summary ---------------- */
 let repTab = 'time', repSeg = '', repMonth = null;

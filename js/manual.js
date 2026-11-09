@@ -114,7 +114,10 @@ window.manualHtml = function (s) {
   ${sec('Branch view and the BM WhatsApp list', `
     <p>Tap a branch on Home (or in <i>Branches with no leads</i>). The top card shows the Branch Manager with
     <b>Call BM</b> and <b>WhatsApp list</b>: one message listing every pending file of that branch with its stage and days,
-    asking for the latest status. For a branch with nothing in the pipeline the button becomes <b>Ask for leads</b>.</p>`)}
+    asking for the latest status. For a branch with nothing in the pipeline the button becomes <b>Ask for leads</b>.
+    <b>Copy message</b> copies the same text, to paste anywhere.</p>
+    <p>The same card exists for each <b>processing officer</b> (Personal, SME, Agri) and the <b>AMH Head</b>: tap their box
+    under <i>Where the files are</i> on Home to see every file they are holding, with Call, WhatsApp list and Copy message.</p>`)}
 
   ${sec('Why files are stuck (reason tags)', `
     <p>In <b>Follow-up</b>, tap one reason if the file is held up: Documents, CIBIL, Valuation, Legal / title,
