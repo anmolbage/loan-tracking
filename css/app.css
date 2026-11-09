@@ -554,3 +554,21 @@ details.acc .acc-body{padding:0 16px 16px}
 
 .dates.d5{grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
 .dates.d5 b{font-size:11.5px}.dates.d5 span{font-size:9px}
+
+/* v0.9: reasons, no-update flag, branch card, reports */
+.item .r4{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.rsn{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:color-mix(in srgb,#b45309 14%,transparent);color:#b45309}
+.stale{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:color-mix(in srgb,var(--danger) 13%,transparent);color:var(--danger)}
+.reasons button.on{background:var(--brand-2);color:#fff;border-color:transparent}
+.bmcard{margin-bottom:12px}
+.bm-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.bm-top b{font-size:15.5px}
+.bm-n{text-align:right}.bm-n b{display:block;font-size:22px;color:var(--brand-2)}.bm-n span{font-size:11.5px;color:var(--text-2)}
+table.rep{width:100%;border-collapse:collapse;font-size:13px}
+.rep th{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--text-3);text-align:right;padding:8px 4px;border-bottom:1px solid var(--line);font-weight:700}
+.rep th:first-child,.rep td:first-child{text-align:left}
+.rep td{padding:10px 4px;border-bottom:1px solid var(--line);vertical-align:top}
+.rep tr:last-child td{border-bottom:0}
+.rep td.n{text-align:right;font-weight:700;white-space:nowrap}
+.rep td.n small{display:block;font-weight:500;color:var(--text-3);font-size:11px}
+.rep td.bad{color:var(--danger)}

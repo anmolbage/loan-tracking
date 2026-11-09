@@ -111,6 +111,33 @@ window.manualHtml = function (s) {
     <p><b>Ask status</b> opens WhatsApp with a polite status enquiry already written. You can change the text before sending.</p>
     <p>Numbers come from the Sheet (Branches and Desks tabs). If a BM or officer changes, update the Sheet and the app picks it up on the next sync.</p>`)}
 
+  ${sec('Branch view and the BM WhatsApp list', `
+    <p>Tap a branch on Home (or in <i>Branches with no leads</i>). The top card shows the Branch Manager with
+    <b>Call BM</b> and <b>WhatsApp list</b>: one message listing every pending file of that branch with its stage and days,
+    asking for the latest status. For a branch with nothing in the pipeline the button becomes <b>Ask for leads</b>.</p>`)}
+
+  ${sec('Why files are stuck (reason tags)', `
+    <p>In <b>Follow-up</b>, tap one reason if the file is held up: Documents, CIBIL, Valuation, Legal / title,
+    Customer not responding, Branch slow, Officer pending, AMH Head pending, Other. It shows on the card and on Home
+    under <b>Why files are stuck</b>; tap a reason to see those files. Moving the stage clears the old reason.</p>`)}
+
+  ${sec('No update for 7+ days', `
+    <p>A red <b>No update</b> tag appears on a live file nobody has heard about for more than ${Number(s.staleDays) || 7} days,
+    even if its follow-up date is later. Chase → <b>No update</b> lists them.</p>`)}
+
+  ${sec('Reports', `
+    <p>More → <b>Reports</b> (or <i>Reports</i> on Home):</p>
+    <ul>
+      <li><b>Processing time</b>: average days at each step (branch, processing officer, AMH Head, sanction note),
+      how many files are waiting at each step now and the oldest. Pick Personal / SME / Agri to see one officer.</li>
+      <li><b>Monthly summary</b>: new proposals, sent for sanction, disbursed and notes dispatched, branch-wise, for any
+      month. <b>Share on WhatsApp</b> or <b>Copy text</b> for a review meeting or HO.</li>
+    </ul>`)}
+
+  ${sec('Duplicate warning', `
+    <p>When adding a proposal, the app warns if a similar borrower name is already live at the same branch, and asks
+    before saving it again.</p>`)}
+
   ${sec('Reminders', s.reminders === 'hold' ? `
     <p><b>Phone reminders are on hold for now.</b> Open <b>Chase → Due &amp; overdue</b> each morning: it lists
     every file whose follow-up date has come. The red number on the Chase button shows how many.</p>

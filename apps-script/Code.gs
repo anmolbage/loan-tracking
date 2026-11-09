@@ -47,12 +47,13 @@ var TABS = {
 var ITEM_COLS = ['id', 'createdAt', 'updatedAt', 'branchCode', 'branchName', 'borrower', 'segment', 'product', 'amount',
   'stage', 'stageSince', 'holderSince', 'nextFollowup', 'lastHeard', 'heardFrom', 'remarks',
   'receivedAmhDate', 'putUpDate', 'sanctionDate', 'disbDate', 'createdBy', 'deleted',
-  'appGenDate', 'noteDate'];   // added in v0.8 (stage list change); new columns always go at the end
+  'appGenDate', 'noteDate',    // added in v0.8 (stage list change); new columns always go at the end
+  'reason'];                    // v0.9: why the file is stuck (latest reason tag)
 var NUM_COLS = ['amount'];
 var DATE_COLS = ['stageSince', 'holderSince', 'nextFollowup', 'lastHeard', 'receivedAmhDate', 'putUpDate', 'sanctionDate', 'disbDate', 'appGenDate', 'noteDate'];
 
 // One row per conversation logged by the RM. Stage history and Recent activity come from here.
-var FU_COLS = ['id', 'createdAt', 'updatedAt', 'proposalId', 'date', 'note', 'stageFrom', 'stageTo', 'nextDate', 'heardFrom', 'createdBy', 'deleted'];
+var FU_COLS = ['id', 'createdAt', 'updatedAt', 'proposalId', 'date', 'note', 'stageFrom', 'stageTo', 'nextDate', 'heardFrom', 'createdBy', 'deleted', 'reason'];
 var FU_DATE_COLS = ['date', 'nextDate'];
 var CLOSED_STAGES = { 'Note dispatched': true, 'Rejected': true };
 
@@ -75,7 +76,8 @@ function defaultSettings_() {
       agri: ['KCC', 'Agri Term Loan', 'Dairy / AH', 'Agri Infra']
     },
     lateDays: { branch: 10, officer: 5, head: 3, note: 7 },
-    nextDays: 3
+    nextDays: 3,
+    staleDays: 7
   };
 }
 
@@ -161,7 +163,9 @@ var MIGRATIONS = [
         if (changed) rng.setValues(v);
       });
     });
-  }
+  },
+  // 2 (v0.9): reason tag column on Proposals and FollowUps
+  function () { ensureTab_(ss_(), TABS.ITEMS, ITEM_COLS); ensureTab_(ss_(), TABS.FOLLOWUPS, FU_COLS); }
 ];
 function runMigrations_() {
   var done = Number(props_().getProperty('MIGRATION') || 0);

@@ -67,6 +67,7 @@ const ICON = {
   phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.4 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.4 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>',
   wa: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3.1.8.8-3-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.4-.7-1.7-.8s-.4-.1-.5.1-.6.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.6-1.2a.4.4 0 0 0 0-.4L9.5 7.9c-.2-.5-.4-.4-.5-.4h-.5a1 1 0 0 0-.7.3A2.9 2.9 0 0 0 7 10a5.1 5.1 0 0 0 1 2.6 11.5 11.5 0 0 0 4.5 4 5.1 5.1 0 0 0 3.1.6 2.6 2.6 0 0 0 1.7-1.2 2.1 2.1 0 0 0 .2-1.2c-.1-.1-.3-.2-.5-.3z"/></svg>',
   book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h7M9 11h5"/></svg>',
+  chart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15v3M12 10v8M17 6v12"/></svg>',
   box: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="m21 16-9 5-9-5V8l9-5 9 5z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg>',
   bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>',
   cloud: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 10h-1.3A7 7 0 1 0 5 16"/><path d="M12 12v9M8 17l4 4 4-4"/></svg>'
@@ -257,6 +258,12 @@ const MOVE_LABEL = { 'Docs pending': 'Documents pending', 'App generated': 'Appl
 const KEY_DATE = { 'App generated': 'appGenDate', 'Sent to RO': 'receivedAmhDate', 'Sent to AMH Head': 'putUpDate', 'Disbursed': 'disbDate', 'Note dispatched': 'noteDate' };
 const TRACK = ['Customer met', 'Docs pending', 'App generated', 'Sent to RO', 'Processing', 'Sent to AMH Head', 'Disbursed', 'Note dispatched'];
 
+const REASONS = ['Documents', 'CIBIL', 'Valuation', 'Legal / title', 'Customer not responding', 'Branch slow', 'Officer pending', 'AMH Head pending', 'Other'];
+const staleLimit = () => Number(Store.settings.staleDays) || 7;
+const lastTouch = p => String(p.lastHeard || p.stageSince || p.createdAt || '').slice(0, 10);
+function silentDays(p) { const n = daysFrom(lastTouch(p)); return n === null ? 0 : Math.max(0, -n); }
+const isStale = p => isLive(p) && silentDays(p) > staleLimit();
+const dayDiff = (a, b) => { if (!a || !b) return null; const d = (new Date(String(b).slice(0, 10) + 'T00:00:00') - new Date(String(a).slice(0, 10) + 'T00:00:00')) / 86400000; return isNaN(d) ? null : Math.round(d); };
 const lateLimit = h => Number((Store.settings.lateDays || {})[h]) || ({ branch: 10, officer: 5, head: 3, note: 7 })[h] || 10;
 function holderDays(p) { const n = daysFrom(p.holderSince || p.stageSince); return n === null ? 0 : Math.max(0, -n); }
 const isLate = p => isLive(p) && holderDays(p) > lateLimit(holderOf(p));
@@ -334,6 +341,7 @@ function renderHome() {
       <div class="sec-head"><h2>Where the files are</h2><span class="link" data-chase="late">Chase</span></div>
       <div class="split">${tile('branch', 'With branches', 'to chase')}${tile('officer', 'With processing officers', 'processing')}${tile('head', 'With AMH Head', 'for sanction')}</div>
     </div>
+    ${whyStuck(live)}
     <div class="sec">
       <div class="sec-head"><h2>By stage</h2><span class="link" data-go="items">View all</span></div>
       <div class="stats">${STAGES.map(s => { const ls = all.filter(p => p.stage === s.id);
@@ -352,9 +360,21 @@ document.addEventListener('click', e => {
   const s = e.target.closest('[data-pstage]');
   if (s) { filters.stage = s.dataset.pstage; filters.branch = ''; go('items'); return; }
   const b = e.target.closest('[data-pbranch]');
-  if (b) { filters.branch = b.dataset.pbranch; filters.stage = ''; go('items'); return; }
+  if (b) { filters.branch = b.dataset.pbranch; filters.stage = ''; filters.reason = ''; go('items'); return; }
+  const r = e.target.closest('[data-preason]');
+  if (r) { filters.reason = r.dataset.preason; filters.stage = ''; filters.branch = ''; go('items'); return; }
   if (e.target.closest('[data-brall]')) { showAllBranches = !showAllBranches; renderHome(); }
 });
+
+// Why files are stuck: live files grouped by their latest reason tag
+function whyStuck(live) {
+  const tagged = live.filter(p => p.reason), stale = live.filter(isStale);
+  if (!tagged.length && !stale.length) return '';
+  const groups = REASONS.map(r => ({ r, ls: tagged.filter(p => p.reason === r) })).filter(g => g.ls.length).sort((a, b) => b.ls.length - a.ls.length);
+  return `<div class="sec"><div class="sec-head"><h2>Why files are stuck</h2><span class="link" data-openrep="time">Reports</span></div>
+    <div class="stats">${groups.map(g => `<button class="stat" data-preason="${esc(g.r)}"><b>${g.ls.length}</b><span class="amt">${lakh(sum(g.ls))}</span><span>${esc(g.r)}</span></button>`).join('')}
+    ${stale.length ? `<button class="stat" data-chase="stale"><b style="color:var(--danger)">${stale.length}</b><span class="amt">${lakh(sum(stale))}</span><span>No update ${staleLimit()}+ days</span></button>` : ''}</div></div>`;
+}
 
 // Branch summary: live files and amount per branch, plus the branches with nothing in the pipeline
 let showAllBranches = false;
@@ -391,6 +411,7 @@ const CHASE_TABS = [
   ['officer', 'With processing officers', l => byAge(l.filter(p => holderOf(p) === 'officer')), 'Received at AMH or under processing.'],
   ['head', 'With AMH Head', l => byAge(l.filter(p => holderOf(p) === 'head')), 'Put up for sanction.'],
   ['sanc', 'Sanction note due', l => byAge(l.filter(p => holderOf(p) === 'note')), 'Disbursed; sanction note not yet dispatched.'],
+  ['stale', 'No update', l => l.filter(isStale).sort((a, b) => silentDays(b) - silentDays(a)), 'Live files nobody has heard about for 7+ days.'],
   ['week', 'Next 7 days', l => byNext(l.filter(inWeek)), 'Follow-ups coming up this week.'],
   ['pipe', 'In pipeline', l => byAge(l.filter(p => isLive(p) && holderOf(p) !== 'note')), 'Every live file up to disbursal.'],
   ['activity', 'Recent activity', null, 'Every conversation you logged, newest first.']
@@ -467,7 +488,7 @@ $('#chaseSearch').addEventListener('input', e => { chaseQ = e.target.value; rend
 /* ============================================================
    PROPOSALS — list, search, filter
    ============================================================ */
-const filters = { q: '', stage: '', branch: '' };
+const filters = { q: '', stage: '', branch: '', reason: '' };
 
 function itemCard(p) {
   return `<button class="item" data-item="${esc(p.id)}" style="--acc:var(--seg-${esc(p.segment || 'personal')})">
@@ -483,6 +504,7 @@ function itemCard(p) {
         ${agePill(p)}
         ${dueTxt(p)}
       </div>
+      ${isLive(p) && (p.reason || isStale(p)) ? `<div class="r4">${p.reason ? `<span class="rsn">${esc(p.reason)}</span>` : ''}${isStale(p) ? `<span class="stale">No update ${silentDays(p)}d</span>` : ''}</div>` : ''}
     </div>
   </button>`;
 }
@@ -492,6 +514,7 @@ function filteredItems() {
   return Store.items
     .filter(p => !filters.stage || p.stage === filters.stage)
     .filter(p => !filters.branch || Number(p.branchCode) === Number(filters.branch))
+    .filter(p => !filters.reason || (isLive(p) && p.reason === filters.reason))
     .filter(p => !q || [p.borrower, branchName(p), p.branchCode, p.product, p.stage, p.remarks].join(' ').toLowerCase().includes(q))
     .sort((a, b) => (isLive(b) - isLive(a)) || String(b.updatedAt).localeCompare(String(a.updatedAt)));
 }
@@ -500,16 +523,41 @@ function renderItems() {
   const counts = {};
   Store.items.forEach(p => { counts[p.stage] = (counts[p.stage] || 0) + 1; });
   const fb = filters.branch ? Store.branch(filters.branch) : null;
-  $('#statusChips').innerHTML = (fb ? `<button class="chip on" data-clearbranch="1">${esc(fb.name)} ✕</button>` : '') + [{ id: '', name: 'All' }, ...STAGES].map(s =>
+  $('#statusChips').innerHTML = (fb ? `<button class="chip on" data-clearbranch="1">${esc(fb.name)} ✕</button>` : '') +
+    (filters.reason ? `<button class="chip on" data-clearreason="1">${esc(filters.reason)} ✕</button>` : '') + [{ id: '', name: 'All' }, ...STAGES].map(s =>
     `<button class="chip${filters.stage === s.id ? ' on' : ''}" data-stage="${esc(s.id)}">${esc(s.id ? s.id : 'All')}${s.id ? ' · ' + (counts[s.id] || 0) : ''}</button>`).join('');
   const list = filteredItems();
   $('#itemCount').textContent = list.length + ' proposal' + (list.length === 1 ? '' : 's') + ' · ' + lakh(sum(list));
-  $('#itemList').innerHTML = list.length ? list.map(itemCard).join('')
-    : (Store.syncing && !Store.items.length ? syncBanner() : emptyBlock('No proposals', 'Nothing matches this filter.'));
+  $('#itemList').innerHTML = (fb ? branchCard(fb) : '') + (list.length ? list.map(itemCard).join('')
+    : (Store.syncing && !Store.items.length ? syncBanner() : emptyBlock('No proposals', 'Nothing matches this filter.')));
+}
+
+// Branch view: BM contact and one WhatsApp listing every pending file of the branch
+function branchCard(b) {
+  const live = byAge(Store.items.filter(p => isLive(p) && Number(p.branchCode) === Number(b.code)));
+  const mob = digits10(b.bmMobile);
+  return `<div class="card bmcard">
+    <div class="bm-top"><div><div class="card-title" style="margin:0">Branch Manager</div>
+      <b>${esc(b.bmName || 'Not in the Branches tab')}</b><div class="sub" style="margin:2px 0 0">${esc(b.name)} (${b.code})${b.bmMobile ? ' · ' + esc(b.bmMobile) : ''}</div></div>
+      <div class="bm-n"><b>${live.length}</b><span>${lakh(sum(live))} live</span></div></div>
+    <div class="btn-row" style="margin-top:12px">
+      ${mob ? `<a class="btn ghost" href="tel:+91${mob}">${ICON.phone} Call BM</a>` : `<button class="btn ghost" disabled>${ICON.phone} No mobile</button>`}
+      ${live.length ? `<a class="btn ghost" style="color:#128c7e" target="_blank" rel="noopener" href="https://wa.me/${mob ? '91' + mob : ''}?text=${encodeURIComponent(bmListText(b, live))}">${ICON.wa} WhatsApp list</a>`
+        : `<a class="btn ghost" style="color:#128c7e" target="_blank" rel="noopener" href="https://wa.me/${mob ? '91' + mob : ''}?text=${encodeURIComponent(bmNudgeText(b))}">${ICON.wa} Ask for leads</a>`}
+    </div></div>`;
+}
+function bmListText(b, live) {
+  return `Dear ${b.bmName || 'Branch Manager'} (${b.name} branch),\nStatus of your branch's loan proposals as on ${longDate()}:\n` +
+    live.map((p, i) => `${i + 1}. ${p.borrower} – ${p.product} ${lakh(p.amount)} – ${stageDef(p.stage).name} (${holderDays(p)} days)${p.reason ? ' – ' + p.reason : ''}`).join('\n') +
+    `\n\nKindly share the latest status and the expected date for each.\n– Regional Manager, ${CFG.OFFICE_NAME}`;
+}
+function bmNudgeText(b) {
+  return `Dear ${b.bmName || 'Branch Manager'} (${b.name} branch),\nThere is no loan proposal from your branch in the pipeline at present. Kindly share the prospective Home, Vehicle, MSME and KCC proposals.\n– Regional Manager, ${CFG.OFFICE_NAME}`;
 }
 $('#searchInput').addEventListener('input', e => { filters.q = e.target.value; renderItems(); });
 document.addEventListener('click', e => {
   if (e.target.closest('[data-clearbranch]')) { filters.branch = ''; renderItems(); return; }
+  if (e.target.closest('[data-clearreason]')) { filters.reason = ''; renderItems(); return; }
   const c = e.target.closest('[data-stage]');
   if (c) { filters.stage = c.dataset.stage; renderItems(); return; }
   const it = e.target.closest('[data-item]');
@@ -548,13 +596,14 @@ function openDetail(id) {
       ${kv('File is with', live ? c.name + (c.mobile ? ' · ' + c.mobile : '') : 'Closed')}
       ${kv('Stage since', p.stageSince ? longDate(p.stageSince) : '—')}
       ${kv('Next follow-up', live ? (p.nextFollowup ? longDate(p.nextFollowup) : 'Not set') : '—')}
-      ${kv('Last heard', (p.lastHeard ? longDate(p.lastHeard) : '—') + (p.heardFrom ? ' · from ' + p.heardFrom : ''))}
+      ${kv('Last heard', (p.lastHeard ? longDate(p.lastHeard) : '—') + (p.heardFrom ? ' · from ' + p.heardFrom : '') + (live && isStale(p) ? ' · no update ' + silentDays(p) + 'd' : ''))}
+      ${live && p.reason ? kv('Stuck because', p.reason) : ''}
       ${kv('Added', prettyTime(p.createdAt))}
     </div>
     ${hist.length ? `<div style="margin-top:18px"><div class="sec-head"><h2>Follow-up history</h2></div>
       <div class="timeline">${hist.map(f => `<div class="tl">
         <div class="tm">${esc(longDate(f.date))} · from ${esc(f.heardFrom || '—')}</div>
-        <div class="tn">${esc(f.note || '—')}</div>
+        <div class="tn">${esc(f.note || '—')}${f.reason ? ` <span class="rsn">${esc(f.reason)}</span>` : ''}</div>
         <div class="tb">${f.stageTo && f.stageTo !== f.stageFrom ? (f.stageFrom ? 'Moved to ' : 'Added at ') + esc(stageDef(f.stageTo).name) : ''}${f.nextDate ? (f.stageTo && f.stageTo !== f.stageFrom ? ' · ' : '') + 'next ' + esc(prettyDate(f.nextDate)) : ''}</div>
       </div>`).join('')}</div></div>` : ''}
     <div class="btn-row" style="margin-top:18px">
@@ -587,6 +636,8 @@ function openFollowup(id) {
     <div class="field"><label>What happened? *</label>
       <textarea id="fuNote" rows="3" placeholder="e.g. BM says sale deed copy will come on Monday"></textarea></div>
     <div class="quick">${QUICK_NOTES.map(t => `<button data-qnote="${esc(t)}">${esc(t)}</button>`).join('')}</div>
+    <div class="field" style="margin-bottom:6px"><label>Why is it stuck? (optional, one tap)</label></div>
+    <div class="quick reasons">${REASONS.map(r => `<button data-reason="${esc(r)}" class="${p.reason === r ? 'on' : ''}">${esc(r)}</button>`).join('')}</div>
     <div class="row2">
       <div class="field"><label>Move stage to</label>${sel('fuStage', [{ v: '', t: 'No change' }, ...(MOVES[p.stage] || []).map(m => ({ v: m, t: MOVE_LABEL[m] }))], '')}</div>
       <div class="field"><label>Heard from</label>${sel('fuHeard', CFG.HEARD_FROM, p.heardFrom || 'BM')}</div>
@@ -612,12 +663,17 @@ function openFollowup(id) {
     }
     x.nextFollowup = isLive(x) ? $('#fuNext').value : '';
     x.lastHeard = date; x.heardFrom = heard; x.remarks = note;
-    Store.saveFollowup({ proposalId: p.id, date, note, stageFrom: p.stage, stageTo: to || p.stage, nextDate: x.nextFollowup, heardFrom: heard }, x);
+    const rb = document.querySelector('.reasons button.on'), reason = rb ? rb.dataset.reason : '';
+    // a stage move clears the old reason unless a new one is picked; a closed file has none
+    x.reason = !isLive(x) ? '' : reason || (to ? '' : (p.reason || ''));
+    Store.saveFollowup({ proposalId: p.id, date, note, stageFrom: p.stage, stageTo: to || p.stage, nextDate: x.nextFollowup, heardFrom: heard, reason }, x);
     toast(to ? 'Saved · moved to ' + stageDef(to).name : 'Follow-up saved', 'ok');
     render(); openDetail(p.id);
   };
 }
 document.addEventListener('click', e => {
+  const rs = e.target.closest('[data-reason]');
+  if (rs) { const on = rs.classList.contains('on'); document.querySelectorAll('.reasons button').forEach(x => x.classList.remove('on')); if (!on) rs.classList.add('on'); return; }
   const q = e.target.closest('[data-qnote]');
   if (q) { const t = $('#fuNote'); t.value = t.value ? t.value + '. ' + q.dataset.qnote : q.dataset.qnote; return; }
   const n = e.target.closest('[data-qnext]');
@@ -702,6 +758,13 @@ $('#formSave').addEventListener('click', () => {
   if (!x.branchCode) { toast('Choose the branch', 'err'); return; }
   if (!x.borrower) { toast('Borrower name is required', 'err'); return; }
   if (!(x.amount > 0)) { toast('Enter the amount in ₹ lakh', 'err'); return; }
+  if (!prev) {
+    const norm = t => String(t || '').toLowerCase().replace(/^dummy\s*-\s*/, '').replace(/[^a-z0-9]/g, '');
+    const nb = norm(x.borrower);
+    const dup = Store.items.find(o => isLive(o) && Number(o.branchCode) === Number(x.branchCode) && nb.length >= 3 &&
+      (norm(o.borrower) === nb || (norm(o.borrower).length >= 4 && (norm(o.borrower).includes(nb) || nb.includes(norm(o.borrower))))));
+    if (dup && !confirm('A similar proposal already exists at ' + branchName(dup) + ':\n\n' + dup.borrower + ' – ' + dup.product + ' ' + lakh(dup.amount) + ' – ' + stageDef(dup.stage).name + '\n\nSave this one anyway?')) return;
+  }
   if (x.stageSince > todayStr()) { toast('Stage date cannot be in the future', 'err'); return; }
   if (!isLive(x)) x.nextFollowup = '';
   // holderSince: when the current holder got the file. Unchanged while the holder stays the same.
@@ -735,6 +798,7 @@ function renderMore() {
     { k: 'sync', i: ICON.cloud, t: 'Sync now', s: Store.queue.length ? Store.queue.length + ' pending change(s)' : 'Everything is up to date' },
     { k: 'export', i: ICON.down, t: 'Export CSV', s: 'Download the proposals currently on screen' },
     { k: 'reminders', i: ICON.bell, t: 'Follow-up reminders', s: Store.reminders && Store.reminders.on ? 'On · Google Tasks list "' + Store.reminders.name + '"' : Store.reminders && Store.reminders.hold ? 'On hold for now · Chase shows what is due' : 'Off · ask support to switch them on' },
+    { k: 'reports', i: ICON.chart, t: 'Reports', s: 'Processing time · monthly summary to share' },
     isAdmin ? { k: 'products', i: ICON.box, t: 'Products', s: Object.values(Store.settings.products || {}).reduce((n, l) => n + l.length, 0) + ' products in Personal, SME, Agri' } : null,
     isAdmin ? { k: 'staff', i: ICON.users, t: 'Logins & PINs', s: Store.users.length + ' login' + (Store.users.length === 1 ? '' : 's') } : null,
     { k: 'pin', i: ICON.key, t: 'Change my PIN', s: 'Keep your account secure' },
@@ -761,6 +825,7 @@ document.addEventListener('click', async e => {
   if (k === 'reminders') toast(Store.reminders && Store.reminders.on ? 'Each follow-up date is a task in Google Tasks' : 'Phone reminders are on hold. Open Chase → Due & overdue each morning.');
   if (k === 'staff') editStaff();
   if (k === 'products') editProducts();
+  if (k === 'reports') openReports('time');
   if (k === 'pin') changePin();
   if (k === 'sheet') window.open(CFG.SHEET_URL, '_blank');
   if (k === 'theme') {
@@ -768,6 +833,86 @@ document.addEventListener('click', async e => {
     document.documentElement.dataset.theme = dark ? 'light' : 'dark';
     try { localStorage.setItem(LS.THEME, dark ? 'light' : 'dark'); } catch (err) {}
     renderMore();
+  }
+});
+
+/* ---------------- reports: processing time + monthly summary ---------------- */
+let repTab = 'time', repSeg = '', repMonth = null;
+const STEPS = [
+  { t: 'Branch: added → sent to RO', a: p => String(p.createdAt || '').slice(0, 10), b: 'receivedAmhDate', now: p => holderOf(p) === 'branch' },
+  { t: 'Processing officer: sent to RO → sent to AMH Head', a: p => p.receivedAmhDate, b: 'putUpDate', now: p => holderOf(p) === 'officer' },
+  { t: 'AMH Head: sent for sanction → disbursed', a: p => p.putUpDate, b: 'disbDate', now: p => holderOf(p) === 'head' },
+  { t: 'Sanction note: disbursed → dispatched', a: p => p.disbDate, b: 'noteDate', now: p => holderOf(p) === 'note' }
+];
+function openReports(tab) {
+  repTab = tab || repTab;
+  if (!repMonth) { const t = new Date(todayStr() + 'T00:00:00'); repMonth = { y: t.getFullYear(), m: t.getMonth() }; }
+  const tabs = `<div class="chips" style="padding:0 0 12px">${[['time', 'Processing time'], ['month', 'Monthly summary']].map(([k, l]) =>
+    `<button class="chip${repTab === k ? ' on' : ''}" data-reptab="${k}">${l}</button>`).join('')}</div>`;
+  openSheet(`<h3>Reports</h3><p class="sub">From the dates recorded on each proposal.</p>${tabs}${repTab === 'time' ? repTime() : repMonthly()}`);
+}
+function repTime() {
+  const segs = `<div class="chips" style="padding:0 0 12px">${[['', 'All'], ...Object.entries(SEG)].map(([k, l]) => `<button class="chip${repSeg === k ? ' on' : ''}" data-repseg="${k}">${esc(l)}</button>`).join('')}</div>`;
+  const items = Store.items.filter(p => !repSeg || p.segment === repSeg);
+  const rows = STEPS.map(s => {
+    const done = items.map(p => dayDiff(s.a(p), p[s.b])).filter(d => d !== null && d >= 0);
+    const waiting = items.filter(p => isLive(p) && s.now(p));
+    const oldest = waiting.reduce((m, p) => Math.max(m, holderDays(p)), 0);
+    const avg = done.length ? (done.reduce((a, b) => a + b, 0) / done.length) : null;
+    return `<tr><td>${esc(s.t)}</td><td class="n">${avg === null ? '–' : avg.toFixed(1)}<small>${done.length ? done.length + ' files' : ''}</small></td><td class="n">${waiting.length}</td><td class="n${oldest > 7 ? ' bad' : ''}">${waiting.length ? oldest + 'd' : '–'}</td></tr>`;
+  }).join('');
+  return segs + `<div class="card" style="padding:6px 12px;overflow-x:auto"><table class="rep"><thead><tr><th>Step</th><th>Avg days</th><th>Waiting now</th><th>Oldest</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="sub" style="margin-top:10px">Avg days counts files that have finished the step. "Waiting now" and "Oldest" show files in that step today. ${repSeg ? SEG[repSeg] + ' segment' : 'Pick a segment to see one processing officer.'}</p>`;
+}
+function monthData() {
+  const { y, m } = repMonth, key = y + '-' + String(m + 1).padStart(2, '0');
+  const inM = d => String(d || '').slice(0, 7) === key;
+  const all = Store.items;
+  const pick = f => all.filter(f);
+  const g = { added: pick(p => inM(p.createdAt)), sent: pick(p => inM(p.putUpDate)), disb: pick(p => inM(p.disbDate)), note: pick(p => inM(p.noteDate)) };
+  const byBr = {};
+  Object.entries(g).forEach(([k, ls]) => ls.forEach(p => { const b = byBr[p.branchCode] = byBr[p.branchCode] || { name: branchName(p), added: [], sent: [], disb: [], note: [] }; b[k].push(p); }));
+  const label = new Date(y, m, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+  return { g, byBr, label };
+}
+function repMonthly() {
+  const { g, byBr, label } = monthData();
+  const cell = ls => ls.length ? `${ls.length}<small>${lakh(sum(ls))}</small>` : '–';
+  const rows = Object.values(byBr).sort((a, b) => sum(b.disb) - sum(a.disb) || b.added.length - a.added.length)
+    .map(b => `<tr><td>${esc(b.name)}</td><td class="n">${cell(b.added)}</td><td class="n">${cell(b.sent)}</td><td class="n">${cell(b.disb)}</td><td class="n">${b.note.length || '–'}</td></tr>`).join('');
+  const text = monthText();
+  return `<div class="cal-head" style="padding:0 0 10px"><button class="iconbtn" data-repmonth="-1" aria-label="Previous month">‹</button><b>${esc(label)}</b><button class="iconbtn" data-repmonth="1" aria-label="Next month">›</button></div>
+    <div class="stats" style="margin-bottom:12px">
+      <div class="stat"><b>${g.added.length}</b><span class="amt">${lakh(sum(g.added))}</span><span>New proposals</span></div>
+      <div class="stat"><b>${g.sent.length}</b><span class="amt">${lakh(sum(g.sent))}</span><span>Sent for sanction</span></div>
+      <div class="stat"><b>${g.disb.length}</b><span class="amt">${lakh(sum(g.disb))}</span><span>Disbursed</span></div>
+    </div>
+    <div class="card" style="padding:6px 12px;overflow-x:auto"><table class="rep"><thead><tr><th>Branch</th><th>New</th><th>To AMH Head</th><th>Disbursed</th><th>Notes</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="5" class="sub">Nothing recorded this month.</td></tr>'}</tbody></table></div>
+    <div class="btn-row" style="margin-top:12px">
+      <a class="btn" style="background:#128c4a" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(text)}">${ICON.wa} Share on WhatsApp</a>
+      <button class="btn ghost" id="repCopy">Copy text</button>
+    </div>`;
+}
+function monthText() {
+  const { g, byBr, label } = monthData();
+  const live = Store.items.filter(isLive);
+  const line = (t, ls) => `${t}: ${ls.length}${ls.length ? ' · ' + lakh(sum(ls)) : ''}`;
+  const brs = Object.values(byBr).filter(b => b.disb.length).sort((a, b) => sum(b.disb) - sum(a.disb)).map(b => `- ${b.name}: ${b.disb.length} · ${lakh(sum(b.disb))}`);
+  return `*Loan pipeline – ${CFG.OFFICE_NAME} – ${label}*\n${line('New proposals', g.added)}\n${line('Sent to AMH Head for sanction', g.sent)}\n${line('Disbursed', g.disb)}\nSanction notes dispatched: ${g.note.length}` +
+    (brs.length ? `\n\n*Branch-wise disbursed*\n${brs.join('\n')}` : '') +
+    `\n\nIn pipeline now: ${live.filter(p => holderOf(p) !== 'note').length} · ${lakh(sum(live.filter(p => holderOf(p) !== 'note')))} · late ${live.filter(isLate).length}`;
+}
+document.addEventListener('click', async e => {
+  if (e.target.closest('[data-openrep]')) { openReports(e.target.closest('[data-openrep]').dataset.openrep); return; }
+  const t = e.target.closest('[data-reptab]'); if (t) { openReports(t.dataset.reptab); return; }
+  const s = e.target.closest('[data-repseg]'); if (s) { repSeg = s.dataset.repseg; openReports('time'); return; }
+  const m = e.target.closest('[data-repmonth]');
+  if (m) { repMonth.m += Number(m.dataset.repmonth); if (repMonth.m < 0) { repMonth.m = 11; repMonth.y--; } if (repMonth.m > 11) { repMonth.m = 0; repMonth.y++; } openReports('month'); return; }
+  if (e.target.id === 'repCopy') {
+    const text = monthText();
+    try { await navigator.clipboard.writeText(text); toast('Copied', 'ok'); }
+    catch (err) { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); toast('Copied', 'ok'); } catch (e2) { toast('Could not copy', 'err'); } ta.remove(); }
   }
 });
 
