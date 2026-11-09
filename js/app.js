@@ -236,23 +236,28 @@ const SEG = CFG.SEGMENTS;
 // amount is kept in ₹ lakh
 const lakh = n => { n = Number(n) || 0; return n >= 100 ? '₹' + (n / 100).toFixed(2).replace(/\.?0+$/, '') + ' Cr' : '₹' + (Math.round(n * 100) / 100) + ' L'; };
 const addDays = (iso, n) => { const d = new Date(iso + 'T00:00:00'); d.setDate(d.getDate() + n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
-const badgeCls = p => p.stage === 'Disbursed' ? 'b-done' : p.stage === 'Rejected' ? 'b-lost' : p.stage === 'Sanctioned' ? 'b-sanctioned'
-  : ({ branch: 'b-branch', officer: 'b-officer', head: 'b-ro' })[holderOf(p)] || 'b-branch';
-const HOLDER_LABEL = { branch: 'With branch', officer: 'With processing officer', head: 'With AMH Head', closed: 'Closed' };
-const HOLDER_COLOR = { branch: '#1d4ed8', officer: '#0e7490', head: '#6d28d9' };
+const badgeCls = p => p.stage === 'Note dispatched' ? 'b-done' : p.stage === 'Rejected' ? 'b-lost'
+  : ({ branch: 'b-branch', officer: 'b-officer', head: 'b-ro', note: 'b-sanctioned' })[holderOf(p)] || 'b-branch';
+const HOLDER_LABEL = { branch: 'With branch', officer: 'With processing officer', head: 'With AMH Head', note: 'Disbursed, sanction note due', closed: 'Closed' };
+const HOLDER_COLOR = { branch: '#1d4ed8', officer: '#0e7490', head: '#6d28d9', note: '#b45309' };
 // Which moves make sense from each stage (the follow-up form offers only these)
 const MOVES = {
-  'Lead': ['Docs pending', 'Received AMH', 'Rejected'], 'Docs pending': ['Received AMH', 'Rejected'],
-  'Received AMH': ['Processing', 'Query', 'Rejected'], 'Processing': ['With AMH Head', 'Query', 'Rejected'],
-  'Query': ['Processing', 'Rejected'], 'With AMH Head': ['Sanctioned', 'Query', 'Rejected'],
-  'Sanctioned': ['Disbursed', 'Rejected'], 'Disbursed': [], 'Rejected': []
+  'Customer met': ['Docs pending', 'App generated', 'Sent to RO', 'Rejected'],
+  'Docs pending': ['App generated', 'Sent to RO', 'Rejected'],
+  'App generated': ['Sent to RO', 'Rejected'],
+  'Sent to RO': ['Processing', 'Rejected'],
+  'Processing': ['Sent to AMH Head', 'Rejected'],
+  'Sent to AMH Head': ['Disbursed', 'Rejected'],
+  'Disbursed': ['Note dispatched'],
+  'Note dispatched': [], 'Rejected': []
 };
-const MOVE_LABEL = { 'Docs pending': 'Documents pending', 'Received AMH': 'Received at AMH', 'Processing': 'Taken up / resubmitted',
-  'Query': 'Query raised to branch', 'With AMH Head': 'Put up to AMH Head', 'Sanctioned': 'Sanctioned', 'Disbursed': 'Disbursed', 'Rejected': 'Rejected / Withdrawn' };
-const KEY_DATE = { 'Received AMH': 'receivedAmhDate', 'With AMH Head': 'putUpDate', 'Sanctioned': 'sanctionDate', 'Disbursed': 'disbDate' };
-const TRACK = ['Lead', 'Docs pending', 'Received AMH', 'Processing', 'With AMH Head', 'Sanctioned', 'Disbursed'];
+const MOVE_LABEL = { 'Docs pending': 'Documents pending', 'App generated': 'Application generated', 'Sent to RO': 'Sent to RO / AMH',
+  'Processing': 'Taken up for processing', 'Sent to AMH Head': 'Sent to AMH Head for sanction', 'Disbursed': 'Disbursed',
+  'Note dispatched': 'Sanction note dispatched', 'Rejected': 'Rejected / Withdrawn' };
+const KEY_DATE = { 'App generated': 'appGenDate', 'Sent to RO': 'receivedAmhDate', 'Sent to AMH Head': 'putUpDate', 'Disbursed': 'disbDate', 'Note dispatched': 'noteDate' };
+const TRACK = ['Customer met', 'Docs pending', 'App generated', 'Sent to RO', 'Processing', 'Sent to AMH Head', 'Disbursed', 'Note dispatched'];
 
-const lateLimit = h => Number((Store.settings.lateDays || {})[h]) || ({ branch: 10, officer: 5, head: 3 })[h] || 10;
+const lateLimit = h => Number((Store.settings.lateDays || {})[h]) || ({ branch: 10, officer: 5, head: 3, note: 7 })[h] || 10;
 function holderDays(p) { const n = daysFrom(p.holderSince || p.stageSince); return n === null ? 0 : Math.max(0, -n); }
 const isLate = p => isLive(p) && holderDays(p) > lateLimit(holderOf(p));
 const isDue = p => isLive(p) && !!p.nextFollowup && daysFrom(p.nextFollowup) <= 0;
@@ -277,6 +282,7 @@ function holderContact(p) {
   const h = holderOf(p);
   if (h === 'branch') { const b = Store.branch(p.branchCode) || {}; return { short: 'BM', name: (b.bmName || 'BM') + ', ' + branchName(p), greet: b.bmName || 'Branch Manager, ' + branchName(p), mobile: b.bmMobile || '' }; }
   if (h === 'closed') return { short: '', name: '—', greet: '', mobile: '' };
+  // 'note' = disbursed, sanction note still to be dispatched by the segment's processing officer at AMH
   const d = Store.desk(h === 'head' ? 'head' : p.segment) || { title: h === 'head' ? 'AMH Head' : (SEG[p.segment] || '') + ' Officer' };
   return { short: h === 'head' ? 'AMH Head' : 'officer', name: d.name ? d.title + ' · ' + d.name : d.title, greet: d.name || d.title, mobile: d.mobile || '' };
 }
@@ -306,7 +312,7 @@ function renderHome() {
   $('#homeBanner').innerHTML = syncBanner();
 
   const all = Store.items.filter(inSeg), live = all.filter(isLive);
-  const pipe = live.filter(p => p.stage !== 'Sanctioned'), sanc = live.filter(p => p.stage === 'Sanctioned');
+  const pipe = live.filter(p => holderOf(p) !== 'note'), sanc = live.filter(p => holderOf(p) === 'note');
   const due = live.filter(isDue), late = byAge(live.filter(isLate));
   const tile = (h, t, s) => { const ls = pipe.filter(p => holderOf(p) === h);
     return `<button class="ph" style="--pc:${HOLDER_COLOR[h]}" data-chase="${h}"><b>${ls.length}</b><span>${t}</span><small>${lakh(sum(ls))} · ${s}</small></button>`; };
@@ -319,7 +325,7 @@ function renderHome() {
         <div class="value">${lakh(sum(pipe))}</div>
         <div class="note">${pipe.length} proposal${pipe.length === 1 ? '' : 's'}${segF ? ' · ' + SEG[segF] : ''}</div></button>
       <div class="hero-row">
-        <button class="hero-chip" data-chase="sanc" style="color:inherit;text-align:left"><b>${lakh(sum(sanc))}</b><span>${sanc.length} sanctioned, to disburse</span></button>
+        <button class="hero-chip" data-chase="sanc" style="color:inherit;text-align:left"><b>${lakh(sum(sanc))}</b><span>${sanc.length} disbursed, note due</span></button>
         <button class="hero-chip" data-chase="due" style="color:inherit;text-align:left"><b>${due.length}</b><span>follow-ups due</span></button>
         <button class="hero-chip" data-chase="late" style="color:inherit;text-align:left"><b>${late.length}</b><span>late files</span></button>
       </div>
@@ -381,12 +387,12 @@ let chaseTab = 'due';
 const CHASE_TABS = [
   ['due', 'Due & overdue', l => byNext(l.filter(isDue)), 'Follow-up date is today or has passed.'],
   ['late', 'Late', l => byAge(l.filter(isLate)), 'With one person longer than the day limit.'],
-  ['branch', 'With branches', l => byAge(l.filter(p => holderOf(p) === 'branch' && p.stage !== 'Sanctioned')), 'Leads, documents and queries pending at branch.'],
+  ['branch', 'With branches', l => byAge(l.filter(p => holderOf(p) === 'branch')), 'Customer met, documents pending, application generated.'],
   ['officer', 'With processing officers', l => byAge(l.filter(p => holderOf(p) === 'officer')), 'Received at AMH or under processing.'],
   ['head', 'With AMH Head', l => byAge(l.filter(p => holderOf(p) === 'head')), 'Put up for sanction.'],
-  ['sanc', 'To disburse', l => byAge(l.filter(p => p.stage === 'Sanctioned')), 'Sanctioned, not yet disbursed.'],
+  ['sanc', 'Sanction note due', l => byAge(l.filter(p => holderOf(p) === 'note')), 'Disbursed; sanction note not yet dispatched.'],
   ['week', 'Next 7 days', l => byNext(l.filter(inWeek)), 'Follow-ups coming up this week.'],
-  ['pipe', 'In pipeline', l => byAge(l.filter(p => isLive(p) && p.stage !== 'Sanctioned')), 'Every live file up to sanction.'],
+  ['pipe', 'In pipeline', l => byAge(l.filter(p => isLive(p) && holderOf(p) !== 'note')), 'Every live file up to disbursal.'],
   ['activity', 'Recent activity', null, 'Every conversation you logged, newest first.']
 ];
 let chaseQ = '';
@@ -520,7 +526,7 @@ function openDetail(id) {
   const p = Store.items.find(i => i.id === id);
   if (!p) return;
   const live = isLive(p), c = holderContact(p);
-  const idx = TRACK.indexOf(p.stage === 'Query' ? 'Processing' : p.stage);
+  const idx = TRACK.indexOf(p.stage);
   const strip = TRACK.map((s, i) => `<i class="${p.stage === 'Rejected' ? 'lost' : i < idx ? 'done' : i === idx ? 'cur' : ''}"></i>`).join('');
   const dbox = (k, l) => `<div class="${p[k] ? 'set' : ''}"><b>${p[k] ? esc(prettyDate(p[k])) : '—'}</b><span>${l}</span></div>`;
   const mob = digits10(c.mobile);
@@ -532,7 +538,7 @@ function openDetail(id) {
     <div class="stages">${strip}</div>
     <div class="stage-line"><span>${live ? esc(HOLDER_LABEL[holderOf(p)]) + ' · ' + holderDays(p) + ' day' + (holderDays(p) === 1 ? '' : 's') : 'Closed'}</span>
       <span>${live && p.nextFollowup ? 'Next: ' + esc(prettyDate(p.nextFollowup)) : ''}</span></div>
-    <div class="dates">${dbox('receivedAmhDate', 'Received AMH')}${dbox('putUpDate', 'Put up')}${dbox('sanctionDate', 'Sanctioned')}${dbox('disbDate', 'Disbursed')}</div>
+    <div class="dates d5">${dbox('appGenDate', 'App. gen.')}${dbox('receivedAmhDate', 'Sent to RO')}${dbox('putUpDate', 'To AMH Head')}${dbox('disbDate', 'Disbursed')}${dbox('noteDate', 'Note sent')}</div>
     ${live ? `<button class="btn" data-act="followup" data-id="${esc(p.id)}">${ICON.edit} Follow-up / move stage</button>
     <div class="btn-row" style="margin-top:10px">
       ${mob ? `<a class="btn ghost" href="tel:+91${mob}">${ICON.phone} Call ${esc(c.short)}</a>` : `<button class="btn ghost" disabled>${ICON.phone} No mobile</button>`}
@@ -625,7 +631,7 @@ let formItem = null;
 const products = seg => ((Store.settings.products || {})[seg] || []).slice();
 const blankItem = () => ({
   id: '', branchCode: '', borrower: '', segment: 'personal', product: products('personal')[0] || '', amount: '',
-  stage: 'Lead', stageSince: todayStr(), nextFollowup: addDays(todayStr(), Number(Store.settings.nextDays) || 3),
+  stage: 'Customer met', stageSince: todayStr(), nextFollowup: addDays(todayStr(), Number(Store.settings.nextDays) || 3),
   lastHeard: todayStr(), heardFrom: 'BM', remarks: ''
 });
 

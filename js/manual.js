@@ -5,7 +5,7 @@
    ============================================================ */
 window.manualHtml = function (s) {
   s = s || {};
-  const late = Object.assign({ branch: 10, officer: 5, head: 3 }, s.lateDays || {});
+  const late = Object.assign({ branch: 10, officer: 5, head: 3, note: 7 }, s.lateDays || {});
   const gap = Number(s.nextDays) || 3;
   const sec = (title, body, open) => `<details class="man"${open ? ' open' : ''}><summary>${title}</summary><div class="man-b">${body}</div></details>`;
 
@@ -51,18 +51,20 @@ window.manualHtml = function (s) {
 
   ${sec('Stages and who holds the file', `
     <table class="man-t">
-      <tr><th>Stage</th><th>File is with</th></tr>
-      <tr><td>Lead at branch</td><td>Branch</td></tr>
-      <tr><td>Documents pending</td><td>Branch</td></tr>
-      <tr><td>Received at AMH</td><td>Processing officer</td></tr>
-      <tr><td>Under processing</td><td>Processing officer</td></tr>
-      <tr><td>Query with branch</td><td>Branch</td></tr>
-      <tr><td>With AMH Head</td><td>AMH Head</td></tr>
-      <tr><td>Sanctioned, not disbursed</td><td>Branch</td></tr>
-      <tr><td>Disbursed / Rejected</td><td>Closed</td></tr>
+      <tr><th>#</th><th>Stage</th><th>File is with</th></tr>
+      <tr><td>1</td><td>Customer met</td><td>Branch</td></tr>
+      <tr><td>2</td><td>Documents pending</td><td>Branch</td></tr>
+      <tr><td>3</td><td>Application generated</td><td>Branch</td></tr>
+      <tr><td>4</td><td>Sent to RO / AMH</td><td>Processing officer</td></tr>
+      <tr><td>5</td><td>Under processing</td><td>Processing officer</td></tr>
+      <tr><td>6</td><td>Sent to AMH Head for sanction</td><td>AMH Head</td></tr>
+      <tr><td>7</td><td>Disbursed, sanction note due</td><td>Processing officer (to dispatch the note)</td></tr>
+      <tr><td>8</td><td>Sanction note dispatched</td><td>Closed (last stage)</td></tr>
+      <tr><td>✕</td><td>Rejected / Withdrawn</td><td>Closed</td></tr>
     </table>
-    <p>The coloured badge on each card shows the stage: blue = branch, teal = officer, purple = AMH Head,
-    amber = sanctioned, green = disbursed, red = rejected.</p>`)}
+    <p>A file stays open after disbursal until the sanction note is dispatched, so a note still due is followed up too.</p>
+    <p>Badge colours: blue = branch, teal = processing officer, purple = AMH Head,
+    amber = disbursed, note due, green = note dispatched, red = rejected.</p>`)}
 
   ${sec('Days and "late" files', `
     <p>The small pill on a card (for example <b>6d</b>) is the number of days the file has been with its
@@ -73,13 +75,14 @@ window.manualHtml = function (s) {
       <li>the branch for more than <b>${late.branch} days</b></li>
       <li>a processing officer for more than <b>${late.officer} days</b></li>
       <li>the AMH Head for more than <b>${late.head} days</b></li>
+      <li>disbursed with the sanction note still not dispatched for more than <b>${late.note || 7} days</b></li>
     </ul>
     <p>Amber means it is getting close. These limits can be changed in the Sheet (Settings tab, <i>lateDays</i>).</p>`)}
 
   ${sec('Home screen', `
     <ul>
-      <li><b>In pipeline</b>: total amount and number of live proposals up to sanction.</li>
-      <li>Small boxes: <b>sanctioned, to disburse</b> · <b>follow-ups due</b> · <b>late files</b>.</li>
+      <li><b>In pipeline</b>: total amount and number of live proposals up to disbursal.</li>
+      <li>Small boxes: <b>disbursed, note due</b> · <b>follow-ups due</b> · <b>late files</b>.</li>
       <li><b>Where the files are</b>: how many are with branches, with processing officers, with the AMH Head.</li>
       <li><b>By stage</b>: count and amount at each stage.</li>
       <li><b>Branches with proposals</b>: live files and amount per branch (late ones marked). Tap a branch for its list.</li>
@@ -96,7 +99,7 @@ window.manualHtml = function (s) {
       <li><b>Late</b>: with one person longer than the limit.</li>
       <li><b>With branches / With processing officers / With AMH Head</b>: what each side is holding.</li>
       <li><b>Calendar</b>: month view of follow-up dates. Tap a day to see its files; red numbers are overdue.</li>
-      <li><b>To disburse</b>: sanctioned but not yet disbursed.</li>
+      <li><b>Sanction note due</b>: disbursed, sanction note not yet dispatched.</li>
       <li><b>Next 7 days</b>: follow-ups coming up this week.</li>
       <li><b>Recent activity</b>: every follow-up you noted, newest first.</li>
     </ul>

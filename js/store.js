@@ -171,6 +171,8 @@ const Store = {
     } else {
       this.items = r.items || [];
     }
+    const alias = CFG.STAGE_ALIAS || {};
+    this.items.forEach(x => { if (alias[x.stage]) x.stage = alias[x.stage]; });
     this.users = r.users || [];
     if (r.branches) this.branches = r.branches;
     if (r.desks) this.desks = r.desks;

@@ -46,14 +46,15 @@ var TABS = {
 // amount is in ₹ lakh. stage holds the stage label from js/config.js (e.g. "Received AMH").
 var ITEM_COLS = ['id', 'createdAt', 'updatedAt', 'branchCode', 'branchName', 'borrower', 'segment', 'product', 'amount',
   'stage', 'stageSince', 'holderSince', 'nextFollowup', 'lastHeard', 'heardFrom', 'remarks',
-  'receivedAmhDate', 'putUpDate', 'sanctionDate', 'disbDate', 'createdBy', 'deleted'];
+  'receivedAmhDate', 'putUpDate', 'sanctionDate', 'disbDate', 'createdBy', 'deleted',
+  'appGenDate', 'noteDate'];   // added in v0.8 (stage list change); new columns always go at the end
 var NUM_COLS = ['amount'];
-var DATE_COLS = ['stageSince', 'holderSince', 'nextFollowup', 'lastHeard', 'receivedAmhDate', 'putUpDate', 'sanctionDate', 'disbDate'];
+var DATE_COLS = ['stageSince', 'holderSince', 'nextFollowup', 'lastHeard', 'receivedAmhDate', 'putUpDate', 'sanctionDate', 'disbDate', 'appGenDate', 'noteDate'];
 
 // One row per conversation logged by the RM. Stage history and Recent activity come from here.
 var FU_COLS = ['id', 'createdAt', 'updatedAt', 'proposalId', 'date', 'note', 'stageFrom', 'stageTo', 'nextDate', 'heardFrom', 'createdBy', 'deleted'];
 var FU_DATE_COLS = ['date', 'nextDate'];
-var CLOSED_STAGES = { 'Disbursed': true, 'Rejected': true };
+var CLOSED_STAGES = { 'Note dispatched': true, 'Rejected': true };
 
 // Branch Managers and AMH contacts are typed or pasted into these tabs in the Sheet
 // (never kept in this file: the repo is public).
@@ -73,7 +74,7 @@ function defaultSettings_() {
       sme: ['MSME Term Loan', 'MSME Cash Credit', 'GST Plus', 'Mudra', 'SRTO'],
       agri: ['KCC', 'Agri Term Loan', 'Dairy / AH', 'Agri Infra']
     },
-    lateDays: { branch: 10, officer: 5, head: 3 },
+    lateDays: { branch: 10, officer: 5, head: 3, note: 7 },
     nextDays: 3
   };
 }
@@ -148,7 +149,19 @@ function ensureSetup_() {
 // One-time changes to an existing Sheet, run in order on the next request after an update.
 // A fresh setup already has them, so setup() marks them all as done. Never reorder or remove.
 var MIGRATIONS = [
-  // 1: example — function () { var s = readSettings_(); s.statuses.push('On hold'); writeSettings_(s); }
+  // 1 (v0.8): new stage list. Adds the appGenDate / noteDate columns and renames old stages.
+  function () {
+    ensureTab_(ss_(), TABS.ITEMS, ITEM_COLS);
+    var MAP = { 'Lead': 'Customer met', 'Received AMH': 'Sent to RO', 'With AMH Head': 'Sent to AMH Head', 'Query': 'Processing', 'Sanctioned': 'Sent to AMH Head' };
+    [[TABS.ITEMS, ITEM_COLS, ['stage']], [TABS.FOLLOWUPS, FU_COLS, ['stageFrom', 'stageTo']]].forEach(function (t) {
+      var sh = ss_().getSheetByName(t[0]); var last = sh ? sh.getLastRow() : 0; if (last < 2) return;
+      t[2].forEach(function (col) {
+        var rng = sh.getRange(2, t[1].indexOf(col) + 1, last - 1, 1), v = rng.getValues(), changed = false;
+        v.forEach(function (r) { if (MAP[r[0]]) { r[0] = MAP[r[0]]; changed = true; } });
+        if (changed) rng.setValues(v);
+      });
+    });
+  }
 ];
 function runMigrations_() {
   var done = Number(props_().getProperty('MIGRATION') || 0);
@@ -683,8 +696,8 @@ function todayStr_() { return Utilities.formatDate(new Date(), Session.getScript
 var TASK_LIST = 'Loan Pipeline';
 var TASK_MAX_CHANGES = 60;        // per run — Google throttles bursts of writes
 var APP_URL = 'https://anmolbage.github.io/loan-tracking/';
-var HOLDER_OF = { 'Lead': 'branch', 'Docs pending': 'branch', 'Received AMH': 'officer', 'Processing': 'officer',
-  'Query': 'branch', 'With AMH Head': 'head', 'Sanctioned': 'branch' };
+var HOLDER_OF = { 'Customer met': 'branch', 'Docs pending': 'branch', 'App generated': 'branch', 'Sent to RO': 'officer',
+  'Processing': 'officer', 'Sent to AMH Head': 'head', 'Disbursed': 'officer' };
 var DESK_OF_SEGMENT = { personal: 'personal', sme: 'sme', agri: 'agri' };
 
 function setupTasks() {
