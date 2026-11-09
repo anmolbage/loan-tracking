@@ -239,7 +239,7 @@ const lakh = n => { n = Number(n) || 0; return n >= 100 ? '₹' + (n / 100).toFi
 const addDays = (iso, n) => { const d = new Date(iso + 'T00:00:00'); d.setDate(d.getDate() + n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 const badgeCls = p => p.stage === 'Note dispatched' ? 'b-done' : p.stage === 'Rejected' ? 'b-lost'
   : ({ branch: 'b-branch', officer: 'b-officer', head: 'b-ro', note: 'b-sanctioned' })[holderOf(p)] || 'b-branch';
-const HOLDER_LABEL = { branch: 'With branch', officer: 'With processing officer', head: 'With AMH Head', note: 'Disbursed, sanction note due', closed: 'Closed' };
+const HOLDER_LABEL = { branch: 'With branch', officer: 'With processing officer', head: 'With AMH Head', note: 'Disbursed · sanction note to be dispatched', closed: 'Closed' };
 const HOLDER_COLOR = { branch: '#1d4ed8', officer: '#0e7490', head: '#6d28d9', note: '#b45309' };
 // Which moves make sense from each stage (the follow-up form offers only these)
 const MOVES = {

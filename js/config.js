@@ -13,7 +13,7 @@ window.APP_CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbxGUZolAka01Tc45VCb6SqXiaQVXcrQ7UzNKe75A1zzo7DLzy97ASDiOFXX194-7fFF/exec',
 
   APP_NAME: 'Loan Tracking',
-  VERSION: '0.9.0',          // bump together with CACHE in sw.js on every release
+  VERSION: '0.9.1',          // bump together with CACHE in sw.js on every release
 
   // Short prefix for this app's browser storage, so two apps on the same
   // GitHub Pages domain never read each other's login or cache.
@@ -37,7 +37,7 @@ window.APP_CONFIG = {
     { id: 'Sent to RO',       name: 'Sent to RO / AMH',              holder: 'officer' },
     { id: 'Processing',       name: 'Under processing',              holder: 'officer' },
     { id: 'Sent to AMH Head', name: 'Sent to AMH Head for sanction', holder: 'head'    },
-    { id: 'Disbursed',        name: 'Disbursed, sanction note due',  holder: 'note'    },
+    { id: 'Disbursed',        name: 'Disbursed',                     holder: 'note'    },
     { id: 'Note dispatched',  name: 'Sanction note dispatched',      holder: 'closed'  },
     { id: 'Rejected',         name: 'Rejected / Withdrawn',          holder: 'closed'  }
   ],

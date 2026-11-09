@@ -58,7 +58,7 @@ window.manualHtml = function (s) {
       <tr><td>4</td><td>Sent to RO / AMH</td><td>Processing officer</td></tr>
       <tr><td>5</td><td>Under processing</td><td>Processing officer</td></tr>
       <tr><td>6</td><td>Sent to AMH Head for sanction</td><td>AMH Head</td></tr>
-      <tr><td>7</td><td>Disbursed, sanction note due</td><td>Processing officer (to dispatch the note)</td></tr>
+      <tr><td>7</td><td>Disbursed</td><td>Processing officer (to dispatch the sanction note)</td></tr>
       <tr><td>8</td><td>Sanction note dispatched</td><td>Closed (last stage)</td></tr>
       <tr><td>✕</td><td>Rejected / Withdrawn</td><td>Closed</td></tr>
     </table>
