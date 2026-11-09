@@ -80,8 +80,10 @@ window.manualHtml = function (s) {
     <ul>
       <li><b>In pipeline</b>: total amount and number of live proposals up to sanction.</li>
       <li>Small boxes: <b>sanctioned, to disburse</b> · <b>follow-ups due</b> · <b>late files</b>.</li>
-      <li><b>Where the files are</b>: how many are with branches, with officers, with the AMH Head.</li>
-      <li><b>By stage</b>: count at each stage.</li>
+      <li><b>Where the files are</b>: how many are with branches, with processing officers, with the AMH Head.</li>
+      <li><b>By stage</b>: count and amount at each stage.</li>
+      <li><b>Branches with proposals</b>: live files and amount per branch (late ones marked). Tap a branch for its list.</li>
+      <li><b>Branches with no leads</b>: branches with nothing in the pipeline: a reason to call.</li>
       <li><b>Late files</b> and <b>Due &amp; overdue</b>: the top few, with <i>All</i> to see the rest.</li>
     </ul>
     <p><b>Every number and box can be tapped</b> to see the list of files behind it.
@@ -92,7 +94,8 @@ window.manualHtml = function (s) {
     <ul>
       <li><b>Due &amp; overdue</b>: follow-up date is today or has passed.</li>
       <li><b>Late</b>: with one person longer than the limit.</li>
-      <li><b>With branches / With officers / With AMH Head</b>: what each side is holding.</li>
+      <li><b>With branches / With processing officers / With AMH Head</b>: what each side is holding.</li>
+      <li><b>Calendar</b>: month view of follow-up dates. Tap a day to see its files; red numbers are overdue.</li>
       <li><b>To disburse</b>: sanctioned but not yet disbursed.</li>
       <li><b>Next 7 days</b>: follow-ups coming up this week.</li>
       <li><b>Recent activity</b>: every follow-up you noted, newest first.</li>
@@ -119,6 +122,7 @@ window.manualHtml = function (s) {
       <li><b>Delete</b> hides a proposal; it stays in the Sheet marked deleted, so nothing is lost by a wrong tap.</li>
       <li><b>Proposals</b> tab: every file, with a search box and a button for each stage.</li>
       <li>More → <b>Export CSV</b>: download the list for a review meeting or a report.</li>
+      <li>More → <b>Products</b>: add or remove products for Personal, SME and Agri.</li>
     </ul>`)}
 
   ${sec('Signal, sync and PIN', `

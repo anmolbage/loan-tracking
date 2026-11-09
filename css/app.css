@@ -521,3 +521,33 @@ details.acc .acc-body{padding:0 16px 16px}
 .man-t{width:100%;border-collapse:collapse;font-size:13.5px;margin-bottom:10px}
 .man-t th,.man-t td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line)}
 .man-t th{font-size:11.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3)}
+
+/* stage tile amount, branch summary, calendar, products editor */
+.stat .amt{display:block;font-size:12px;font-weight:700;color:var(--brand-2);margin:1px 0 3px}
+.brs{padding:4px 12px}
+.brrow{display:grid;grid-template-columns:1fr auto 28px 74px;gap:8px;align-items:center;width:100%;padding:11px 2px;border:0;border-bottom:1px solid var(--line);background:none;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.brrow:last-child{border-bottom:0}
+.brrow .bn{font-weight:650;font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brrow .bn i{font-style:normal;color:var(--text-3);font-size:11.5px;font-weight:500}
+.brrow .bc{text-align:right;font-weight:750}
+.brrow .ba{text-align:right;color:var(--text-2);font-size:13px;font-weight:600}
+.zero{display:flex;flex-wrap:wrap;gap:6px}
+.zero button{font:inherit;font-size:12.5px;padding:6px 11px;border-radius:99px;background:var(--surface);border:1px dashed var(--line);color:var(--text-2);cursor:pointer}
+.cal{padding:12px 10px 10px}
+.cal-head{display:flex;align-items:center;justify-content:space-between;padding:0 2px 8px}
+.cal-head b{font-size:16px;font-weight:700}
+.cal-head .iconbtn{font-size:22px;line-height:1}
+.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.cal-dow span{font-size:11px;font-weight:700;color:var(--text-3);text-align:center;padding:4px 0;text-transform:uppercase}
+.cal-day{aspect-ratio:1/1;min-height:38px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font:inherit;font-size:14px;font-weight:600;color:var(--text);background:transparent;border:0;cursor:pointer}
+.cal-day.out{color:var(--text-3);opacity:.5}
+.cal-day.today{box-shadow:inset 0 0 0 2px var(--brand-2)}
+.cal-day.sel{background:var(--brand-2);color:#fff}
+.cal-day .n{min-width:18px;height:18px;padding:0 5px;border-radius:9px;font-size:10.5px;font-weight:800;line-height:18px;background:color-mix(in srgb,var(--brand-2) 16%,transparent);color:var(--brand-2)}
+.cal-day.over .n{background:color-mix(in srgb,var(--danger) 16%,transparent);color:var(--danger)}
+.cal-day.sel .n{background:rgba(255,255,255,.25);color:#fff}
+.prods{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.prod{display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:5px 6px 5px 11px;border-radius:99px;background:var(--surface-2);border:1px solid var(--line)}
+.prod button{width:22px;height:22px;border-radius:50%;border:0;background:none;color:var(--text-3);cursor:pointer;font-size:12px}
+.addp{display:flex;gap:8px}
+.addp input{flex:1;min-width:0;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font:inherit;color:var(--text)}

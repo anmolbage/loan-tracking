@@ -67,6 +67,7 @@ const ICON = {
   phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.4 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.4 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>',
   wa: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3.1.8.8-3-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.4-.7-1.7-.8s-.4-.1-.5.1-.6.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.6-1.2a.4.4 0 0 0 0-.4L9.5 7.9c-.2-.5-.4-.4-.5-.4h-.5a1 1 0 0 0-.7.3A2.9 2.9 0 0 0 7 10a5.1 5.1 0 0 0 1 2.6 11.5 11.5 0 0 0 4.5 4 5.1 5.1 0 0 0 3.1.6 2.6 2.6 0 0 0 1.7-1.2 2.1 2.1 0 0 0 .2-1.2c-.1-.1-.3-.2-.5-.3z"/></svg>',
   book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h7M9 11h5"/></svg>',
+  box: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="m21 16-9 5-9-5V8l9-5 9 5z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg>',
   bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>',
   cloud: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 10h-1.3A7 7 0 1 0 5 16"/><path d="M12 12v9M8 17l4 4 4-4"/></svg>'
 };
@@ -325,13 +326,14 @@ function renderHome() {
     </div>
     <div class="sec">
       <div class="sec-head"><h2>Where the files are</h2><span class="link" data-chase="late">Chase</span></div>
-      <div class="split">${tile('branch', 'With branches', 'to chase')}${tile('officer', 'With officers', 'processing')}${tile('head', 'With AMH Head', 'for sanction')}</div>
+      <div class="split">${tile('branch', 'With branches', 'to chase')}${tile('officer', 'With processing officers', 'processing')}${tile('head', 'With AMH Head', 'for sanction')}</div>
     </div>
     <div class="sec">
       <div class="sec-head"><h2>By stage</h2><span class="link" data-go="items">View all</span></div>
-      <div class="stats">${STAGES.map(s => { const n = all.filter(p => p.stage === s.id).length;
-        return `<button class="stat" data-pstage="${esc(s.id)}"><b>${n}</b><span><i class="dot" style="background:${HOLDER_COLOR[s.holder] || '#94a3b8'}"></i>${esc(s.name)}</span></button>`; }).join('')}</div>
+      <div class="stats">${STAGES.map(s => { const ls = all.filter(p => p.stage === s.id);
+        return `<button class="stat" data-pstage="${esc(s.id)}"><b>${ls.length}</b><span class="amt">${lakh(sum(ls))}</span><span><i class="dot" style="background:${HOLDER_COLOR[s.holder] || '#94a3b8'}"></i>${esc(s.name)}</span></button>`; }).join('')}</div>
     </div>
+    ${branchSummary(live)}
     ${late.length ? `<div class="sec"><div class="sec-head"><h2>Late files</h2><span class="link" data-chase="late">All ${late.length}</span></div>
       <div class="list" style="padding:0">${late.slice(0, 4).map(itemCard).join('')}</div></div>` : ''}
     <div class="sec"><div class="sec-head"><h2>Due &amp; overdue</h2><span class="link" data-chase="due">All ${due.length}</span></div>
@@ -342,8 +344,35 @@ document.addEventListener('click', e => {
   const c = e.target.closest('[data-chase]');
   if (c) { chaseTab = c.dataset.chase; go('chase'); return; }
   const s = e.target.closest('[data-pstage]');
-  if (s) { filters.stage = s.dataset.pstage; go('items'); }
+  if (s) { filters.stage = s.dataset.pstage; filters.branch = ''; go('items'); return; }
+  const b = e.target.closest('[data-pbranch]');
+  if (b) { filters.branch = b.dataset.pbranch; filters.stage = ''; go('items'); return; }
+  if (e.target.closest('[data-brall]')) { showAllBranches = !showAllBranches; renderHome(); }
 });
+
+// Branch summary: live files and amount per branch, plus the branches with nothing in the pipeline
+let showAllBranches = false;
+function branchSummary(live) {
+  const rows = Store.branches.map(b => {
+    const ls = live.filter(p => Number(p.branchCode) === Number(b.code));
+    return { b, n: ls.length, amt: sum(ls), late: ls.filter(isLate).length };
+  });
+  const active = rows.filter(r => r.n).sort((a, b) => b.amt - a.amt || b.n - a.n);
+  const zero = rows.filter(r => !r.n).sort((a, b) => a.b.name.localeCompare(b.b.name));
+  const shown = showAllBranches ? active : active.slice(0, 8);
+  return `<div class="sec">
+    <div class="sec-head"><h2>Branches with proposals · ${active.length}</h2>${active.length > 8 ? `<span class="link" data-brall="1">${showAllBranches ? 'Top 8' : 'All ' + active.length}</span>` : ''}</div>
+    <div class="card brs">${shown.length ? shown.map(r => `<button class="brrow" data-pbranch="${r.b.code}">
+        <span class="bn">${esc(r.b.name)} <i>${r.b.code}</i></span>
+        ${r.late ? `<span class="age stuck">${r.late} late</span>` : '<span></span>'}
+        <span class="bc">${r.n}</span><span class="ba">${lakh(r.amt)}</span></button>`).join('')
+      : '<p class="sub" style="margin:0">No live proposals yet.</p>'}</div>
+  </div>
+  <div class="sec">
+    <div class="sec-head"><h2>Branches with no leads · ${zero.length}</h2></div>
+    <div class="zero">${zero.map(r => `<button data-pbranch="${r.b.code}">${esc(r.b.name)}</button>`).join('')}</div>
+  </div>`;
+}
 
 /* ============================================================
    CHASE — who to follow up with, and what changed
@@ -353,7 +382,7 @@ const CHASE_TABS = [
   ['due', 'Due & overdue', l => byNext(l.filter(isDue)), 'Follow-up date is today or has passed.'],
   ['late', 'Late', l => byAge(l.filter(isLate)), 'With one person longer than the day limit.'],
   ['branch', 'With branches', l => byAge(l.filter(p => holderOf(p) === 'branch' && p.stage !== 'Sanctioned')), 'Leads, documents and queries pending at branch.'],
-  ['officer', 'With officers', l => byAge(l.filter(p => holderOf(p) === 'officer')), 'Received at AMH or under processing.'],
+  ['officer', 'With processing officers', l => byAge(l.filter(p => holderOf(p) === 'officer')), 'Received at AMH or under processing.'],
   ['head', 'With AMH Head', l => byAge(l.filter(p => holderOf(p) === 'head')), 'Put up for sanction.'],
   ['sanc', 'To disburse', l => byAge(l.filter(p => p.stage === 'Sanctioned')), 'Sanctioned, not yet disbursed.'],
   ['week', 'Next 7 days', l => byNext(l.filter(inWeek)), 'Follow-ups coming up this week.'],
@@ -366,7 +395,7 @@ function renderChase() {
   const base = Store.items.filter(inSeg).filter(p => !q || [p.borrower, branchName(p), p.branchCode, p.product].join(' ').toLowerCase().includes(q));
   const tab = CHASE_TABS.find(t => t[0] === chaseTab) || CHASE_TABS[0];
   $('#chaseSeg').innerHTML = segChips();
-  $('#chaseChips').innerHTML = CHASE_TABS.map(([k, l, fn]) =>
+  $('#chaseChips').innerHTML = `<button class="chip" data-opencal="1">${ICON.cal} Calendar</button>` + CHASE_TABS.map(([k, l, fn]) =>
     `<button class="chip${tab[0] === k ? ' on' : ''}" data-ctab="${k}">${esc(l)}${fn ? ' · ' + fn(base).length : ''}</button>`).join('');
   if (tab[0] === 'activity') {
     const ids = new Set(base.map(p => p.id));
@@ -387,12 +416,52 @@ function renderChase() {
   $('#chaseList').innerHTML = list.length ? list.map(itemCard).join('') : emptyBlock('All clear', 'Nothing in this bucket.');
 }
 document.addEventListener('click', e => { const t = e.target.closest('[data-ctab]'); if (t) { chaseTab = t.dataset.ctab; renderChase(); } });
+
+/* ---------------- calendar: follow-ups by date ---------------- */
+let calY = null, calM = null, calSel = null;
+const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+function openCalendar() {
+  const today = todayStr();
+  if (calY === null) { const t = new Date(today + 'T00:00:00'); calY = t.getFullYear(); calM = t.getMonth(); calSel = today; }
+  const live = Store.items.filter(inSeg).filter(p => isLive(p) && p.nextFollowup);
+  const map = {}; live.forEach(p => { const d = String(p.nextFollowup).slice(0, 10); (map[d] = map[d] || []).push(p); });
+  const first = new Date(calY, calM, 1), lead = (first.getDay() + 6) % 7, days = new Date(calY, calM + 1, 0).getDate();
+  const cells = Math.ceil((lead + days) / 7) * 7;
+  let grid = '';
+  for (let i = 0; i < cells; i++) {
+    const d = new Date(calY, calM, 1 - lead + i), k = ymd(d), n = (map[k] || []).length;
+    grid += `<button class="cal-day${d.getMonth() !== calM ? ' out' : ''}${k === today ? ' today' : ''}${k === calSel ? ' sel' : ''}${n && k < today ? ' over' : ''}" data-calday="${k}"><span>${d.getDate()}</span>${n ? `<span class="n">${n}</span>` : ''}</button>`;
+  }
+  const sel = byAge(map[calSel] || []);
+  const overdue = calSel === today ? byNext(live.filter(p => String(p.nextFollowup).slice(0, 10) < today)) : [];
+  const month = first.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+  openSheet(`
+    <h3>Follow-up calendar</h3>
+    <p class="sub">Tap a day to see whose follow-up falls on it.${segF ? ' · ' + SEG[segF] : ''}</p>
+    <div class="card cal">
+      <div class="cal-head"><button class="iconbtn" data-calmove="-1" aria-label="Previous month">‹</button><b>${month}</b><button class="iconbtn" data-calmove="1" aria-label="Next month">›</button></div>
+      <div class="cal-grid cal-dow"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+      <div class="cal-grid">${grid}</div>
+    </div>
+    <div class="sec-head" style="margin:16px 0 10px"><h2>${esc(longDate(calSel))} · ${sel.length}</h2></div>
+    <div class="list" style="padding:0">${sel.length ? sel.map(itemCard).join('') : '<p class="sub" style="margin:0">No follow-ups on this day.</p>'}</div>
+    ${overdue.length ? `<div class="sec-head" style="margin:16px 0 10px"><h2 style="color:var(--danger)">Overdue from earlier · ${overdue.length}</h2></div>
+      <div class="list" style="padding:0">${overdue.map(itemCard).join('')}</div>` : ''}
+  `);
+}
+document.addEventListener('click', e => {
+  if (e.target.closest('[data-opencal]')) { calY = null; openCalendar(); return; }
+  const m = e.target.closest('[data-calmove]');
+  if (m) { calM += Number(m.dataset.calmove); if (calM < 0) { calM = 11; calY--; } if (calM > 11) { calM = 0; calY++; } openCalendar(); return; }
+  const d = e.target.closest('[data-calday]');
+  if (d) { calSel = d.dataset.calday; openCalendar(); }
+});
 $('#chaseSearch').addEventListener('input', e => { chaseQ = e.target.value; renderChase(); });
 
 /* ============================================================
    PROPOSALS — list, search, filter
    ============================================================ */
-const filters = { q: '', stage: '' };
+const filters = { q: '', stage: '', branch: '' };
 
 function itemCard(p) {
   return `<button class="item" data-item="${esc(p.id)}" style="--acc:var(--seg-${esc(p.segment || 'personal')})">
@@ -416,6 +485,7 @@ function filteredItems() {
   const q = filters.q.toLowerCase();
   return Store.items
     .filter(p => !filters.stage || p.stage === filters.stage)
+    .filter(p => !filters.branch || Number(p.branchCode) === Number(filters.branch))
     .filter(p => !q || [p.borrower, branchName(p), p.branchCode, p.product, p.stage, p.remarks].join(' ').toLowerCase().includes(q))
     .sort((a, b) => (isLive(b) - isLive(a)) || String(b.updatedAt).localeCompare(String(a.updatedAt)));
 }
@@ -423,7 +493,8 @@ function filteredItems() {
 function renderItems() {
   const counts = {};
   Store.items.forEach(p => { counts[p.stage] = (counts[p.stage] || 0) + 1; });
-  $('#statusChips').innerHTML = [{ id: '', name: 'All' }, ...STAGES].map(s =>
+  const fb = filters.branch ? Store.branch(filters.branch) : null;
+  $('#statusChips').innerHTML = (fb ? `<button class="chip on" data-clearbranch="1">${esc(fb.name)} ✕</button>` : '') + [{ id: '', name: 'All' }, ...STAGES].map(s =>
     `<button class="chip${filters.stage === s.id ? ' on' : ''}" data-stage="${esc(s.id)}">${esc(s.id ? s.id : 'All')}${s.id ? ' · ' + (counts[s.id] || 0) : ''}</button>`).join('');
   const list = filteredItems();
   $('#itemCount').textContent = list.length + ' proposal' + (list.length === 1 ? '' : 's') + ' · ' + lakh(sum(list));
@@ -432,6 +503,7 @@ function renderItems() {
 }
 $('#searchInput').addEventListener('input', e => { filters.q = e.target.value; renderItems(); });
 document.addEventListener('click', e => {
+  if (e.target.closest('[data-clearbranch]')) { filters.branch = ''; renderItems(); return; }
   const c = e.target.closest('[data-stage]');
   if (c) { filters.stage = c.dataset.stage; renderItems(); return; }
   const it = e.target.closest('[data-item]');
@@ -657,6 +729,7 @@ function renderMore() {
     { k: 'sync', i: ICON.cloud, t: 'Sync now', s: Store.queue.length ? Store.queue.length + ' pending change(s)' : 'Everything is up to date' },
     { k: 'export', i: ICON.down, t: 'Export CSV', s: 'Download the proposals currently on screen' },
     { k: 'reminders', i: ICON.bell, t: 'Follow-up reminders', s: Store.reminders && Store.reminders.on ? 'On · Google Tasks list "' + Store.reminders.name + '"' : Store.reminders && Store.reminders.hold ? 'On hold for now · Chase shows what is due' : 'Off · ask support to switch them on' },
+    isAdmin ? { k: 'products', i: ICON.box, t: 'Products', s: Object.values(Store.settings.products || {}).reduce((n, l) => n + l.length, 0) + ' products in Personal, SME, Agri' } : null,
     isAdmin ? { k: 'staff', i: ICON.users, t: 'Logins & PINs', s: Store.users.length + ' login' + (Store.users.length === 1 ? '' : 's') } : null,
     { k: 'pin', i: ICON.key, t: 'Change my PIN', s: 'Keep your account secure' },
     { k: 'theme', i: ICON.moon, t: 'Dark mode', s: dark ? 'On' : 'Follows your phone', toggle: dark },
@@ -681,6 +754,7 @@ document.addEventListener('click', async e => {
   if (k === 'connect') toast('To connect another Sheet: sign out, then open the new installer link');
   if (k === 'reminders') toast(Store.reminders && Store.reminders.on ? 'Each follow-up date is a task in Google Tasks' : 'Phone reminders are on hold. Open Chase → Due & overdue each morning.');
   if (k === 'staff') editStaff();
+  if (k === 'products') editProducts();
   if (k === 'pin') changePin();
   if (k === 'sheet') window.open(CFG.SHEET_URL, '_blank');
   if (k === 'theme') {
@@ -689,6 +763,43 @@ document.addEventListener('click', async e => {
     try { localStorage.setItem(LS.THEME, dark ? 'light' : 'dark'); } catch (err) {}
     renderMore();
   }
+});
+
+/* ---------------- products (Admin) ---------------- */
+// Edits the product list per segment. Saved to the Settings tab; existing proposals keep their product.
+let prodDraft = null;
+function editProducts() {
+  prodDraft = JSON.parse(JSON.stringify(Store.settings.products || {}));
+  Object.keys(SEG).forEach(k => { prodDraft[k] = prodDraft[k] || []; });
+  drawProducts();
+}
+function drawProducts() {
+  openSheet(`
+    <h3>Products</h3>
+    <p class="sub">The products offered in the New proposal form. Removing one does not change proposals already saved with it.</p>
+    ${Object.entries(SEG).map(([k, l]) => `<div class="card" style="margin-bottom:12px">
+      <div class="card-title">${esc(l)}</div>
+      <div class="prods">${prodDraft[k].map((p, i) => `<span class="prod">${esc(p)}<button data-delprod="${k}|${i}" aria-label="Remove ${esc(p)}">✕</button></span>`).join('') || '<span class="sub">No products</span>'}</div>
+      <div class="addp"><input id="np-${k}" placeholder="Add a ${esc(l)} product" autocomplete="off"><button class="btn sm" data-addprod="${k}">Add</button></div>
+    </div>`).join('')}
+    <button class="btn" id="saveProducts">Save products</button>
+  `);
+  $('#saveProducts').onclick = () => {
+    if (Object.keys(SEG).some(k => !prodDraft[k].length)) { toast('Keep at least one product in each segment', 'err'); return; }
+    Store.saveSettings(Object.assign({}, Store.settings, { products: prodDraft }));
+    closeSheet(); toast('Products saved', 'ok'); render();
+  };
+}
+document.addEventListener('click', e => {
+  const a = e.target.closest('[data-addprod]');
+  if (a) {
+    const k = a.dataset.addprod, v = ($('#np-' + k).value || '').trim().replace(/\s+/g, ' ');
+    if (!v) return;
+    if (prodDraft[k].some(p => p.toLowerCase() === v.toLowerCase())) { toast('Already in the list', 'err'); return; }
+    prodDraft[k].push(v); drawProducts(); return;
+  }
+  const d = e.target.closest('[data-delprod]');
+  if (d) { const [k, i] = d.dataset.delprod.split('|'); prodDraft[k].splice(Number(i), 1); drawProducts(); }
 });
 
 /* ---------------- logins & PINs (Admin) ---------------- */
