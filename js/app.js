@@ -327,7 +327,7 @@ function renderHome() {
 
   $('#homeBody').innerHTML = `
     <div class="chips">${segChips()}</div>
-    <div class="hero" style="margin-bottom:20px">
+    <div class="hero${segF ? ' hero-' + segF : ''}" style="margin-bottom:20px">
       <button style="display:block;width:100%;text-align:left;color:inherit;position:relative" data-chase="pipe">
         <div class="label">In pipeline</div>
         <div class="value">${lakh(sum(pipe))}</div>

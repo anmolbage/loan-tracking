@@ -587,3 +587,8 @@ table.rep{width:100%;border-collapse:collapse;font-size:13px}
 .chip.segc.on{background:var(--sc);color:#fff;box-shadow:0 4px 14px color-mix(in srgb,var(--sc) 35%,transparent)}
 .chip.segc::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--sc);margin-right:6px;vertical-align:1px}
 .chip.segc.on::before{background:#fff}
+
+/* summary card follows the selected segment */
+.hero.hero-personal{background:linear-gradient(135deg,#1c2f73 0%,#2b52c9 100%);box-shadow:0 10px 30px rgba(43,82,201,.3)}
+.hero.hero-sme{background:linear-gradient(135deg,#6b2a0c 0%,#b45309 100%);box-shadow:0 10px 30px rgba(180,83,9,.3)}
+.hero.hero-agri{background:linear-gradient(135deg,#0d3d22 0%,#0b7a42 100%);box-shadow:0 10px 30px rgba(11,122,66,.3)}
