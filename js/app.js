@@ -305,7 +305,7 @@ function waText(p) {
 let segF = '';
 const inSeg = p => !segF || p.segment === segF;
 const segChips = () => [['', 'All segments'], ...Object.entries(SEG)].map(([k, l]) =>
-  `<button class="chip${segF === k ? ' on' : ''}" data-segf="${k}">${esc(l)}</button>`).join('');
+  `<button class="chip${segF === k ? ' on' : ''}${k ? ' segc segc-' + k : ''}" data-segf="${k}">${esc(l)}</button>`).join('');
 document.addEventListener('click', e => { const c = e.target.closest('[data-segf]'); if (c) { segF = c.dataset.segf; render(); } });
 
 /* ============================================================

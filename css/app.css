@@ -581,3 +581,9 @@ table.rep{width:100%;border-collapse:collapse;font-size:13px}
 .desk span{display:block;font-size:10.5px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.3px;line-height:1.2}
 .desk b{display:block;font-size:20px;font-weight:750;color:var(--brand-2);margin:3px 0 1px}
 .desk small{display:block;font-size:10.5px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* segment chips take their segment colour (same as the stripe on the cards) */
+.chip.segc-personal{--sc:var(--seg-personal)} .chip.segc-sme{--sc:var(--seg-sme)} .chip.segc-agri{--sc:var(--seg-agri)}
+.chip.segc.on{background:var(--sc);color:#fff;box-shadow:0 4px 14px color-mix(in srgb,var(--sc) 35%,transparent)}
+.chip.segc::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--sc);margin-right:6px;vertical-align:1px}
+.chip.segc.on::before{background:#fff}
