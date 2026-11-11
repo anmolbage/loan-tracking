@@ -137,6 +137,12 @@ window.manualHtml = function (s) {
       month. <b>Share on WhatsApp</b> or <b>Copy text</b> for a review meeting or HO.</li>
     </ul>`)}
 
+  ${sec('Segment report (PDF / Excel)', `
+    <p>More → <b>Segment report</b>: pick <b>Personal</b>, <b>SME</b>, <b>Agri</b> or <b>All segments</b>, then <b>PDF</b> or <b>Excel</b>.
+    It lists every proposal of that segment at every stage, branch by branch: SR, BR, Branch, Borrower, Product,
+    Amount (Rs lakh), Stage, With, Remarks and an empty <b>REMARKS2</b> column to write on, with the total at the end.
+    Use it when you sit with the processing officer. The file is named like <i>PER SEG 11112026</i>.</p>`)}
+
   ${sec('Duplicate warning', `
     <p>When adding a proposal, the app warns if a similar borrower name is already live at the same branch, and asks
     before saving it again.</p>`)}

@@ -830,6 +830,7 @@ function renderMore() {
     { k: 'sync', i: ICON.cloud, t: 'Sync now', s: Store.queue.length ? Store.queue.length + ' pending change(s)' : 'Everything is up to date' },
     { k: 'export', i: ICON.down, t: 'Export CSV', s: 'Download the proposals currently on screen' },
     { k: 'reminders', i: ICON.bell, t: 'Follow-up reminders', s: Store.reminders && Store.reminders.on ? 'On · Google Tasks list "' + Store.reminders.name + '"' : Store.reminders && Store.reminders.hold ? 'On hold for now · Chase shows what is due' : 'Off · ask support to switch them on' },
+    { k: 'segreport', i: ICON.down, t: 'Segment report (PDF / Excel)', s: 'All proposals of a segment, to follow up with the processing officer' },
     { k: 'reports', i: ICON.chart, t: 'Reports', s: 'Processing time · monthly summary to share' },
     isAdmin ? { k: 'products', i: ICON.box, t: 'Products', s: Object.values(Store.settings.products || {}).reduce((n, l) => n + l.length, 0) + ' products in Personal, SME, Agri' } : null,
     isAdmin ? { k: 'staff', i: ICON.users, t: 'Logins & PINs', s: Store.users.length + ' login' + (Store.users.length === 1 ? '' : 's') } : null,
@@ -858,6 +859,7 @@ document.addEventListener('click', async e => {
   if (k === 'staff') editStaff();
   if (k === 'products') editProducts();
   if (k === 'reports') openReports('time');
+  if (k === 'segreport') openSegReport();
   if (k === 'pin') changePin();
   if (k === 'sheet') window.open(CFG.SHEET_URL, '_blank');
   if (k === 'theme') {
@@ -867,6 +869,96 @@ document.addEventListener('click', async e => {
     renderMore();
   }
 });
+
+/* ---------------- segment report: PDF / Excel for following up with processing officers ---------------- */
+// Columns as in the RO's sample "PER SEG" report: SR, BR, Branch, Borrower, Product, Amount, Stage, With,
+// Remarks, and an empty REMARKS2 column to write on. Every proposal at every stage, sorted by branch.
+let segRepK = 'personal';
+const SEG_CODE = { personal: 'PER', sme: 'SME', agri: 'AGRI', '': 'ALL' };
+const WITH_TEXT = { branch: 'With branch', officer: 'With processing officer', head: 'With AMH Head', note: 'Processing officer (sanction note due)', closed: 'Closed' };
+function segReportRows(k) {
+  const order = id => { const i = STAGES.findIndex(s => s.id === id); return i < 0 ? 99 : i; };
+  return Store.items.filter(p => !k || p.segment === k)
+    .slice().sort((a, b) => branchName(a).localeCompare(branchName(b)) || order(a.stage) - order(b.stage) || String(a.borrower).localeCompare(String(b.borrower)));
+}
+function segReportTable(k) {
+  const all = !k;
+  const head = ['SR', 'BR', 'Branch', 'Borrower', 'Product'].concat(all ? ['Segment'] : [], ['Amount (Rs lakh)', 'Stage', 'With', 'Remarks', 'REMARKS2']);
+  const rows = segReportRows(k).map((p, i) => [i + 1, Number(p.branchCode) || p.branchCode, branchName(p), p.borrower, p.product]
+    .concat(all ? [SEG[p.segment] || p.segment] : [], [Number(p.amount) || 0, p.stage, WITH_TEXT[holderOf(p)] || '', p.remarks || '', '']));
+  const total = rows.reduce((t, r) => t + (Number(r[all ? 6 : 5]) || 0), 0);
+  const ddmmyyyy = todayStr().split('-').reverse().join('');
+  const title = (all ? 'All segments' : SEG[k] + ' segment') + ' — loan proposals · ' + CFG.OFFICE_NAME + ' · as on ' + todayStr().split('-').reverse().join('.');
+  return { head, rows, total, all, title, file: SEG_CODE[k] + ' SEG ' + ddmmyyyy };
+}
+function openSegReport() {
+  const t = segReportTable(segRepK);
+  openSheet(`
+    <h3>Segment report</h3>
+    <p class="sub">Every proposal of the segment at every stage, branch by branch, with an empty REMARKS2 column for notes while you talk to the processing officer.</p>
+    <div class="chips" style="padding:0 0 12px">${[['personal', 'Personal'], ['sme', 'SME'], ['agri', 'Agri'], ['', 'All segments']].map(([k, l]) =>
+      `<button class="chip${segRepK === k ? ' on' : ''}${k ? ' segc segc-' + k : ''}" data-segrep="${k}">${l}</button>`).join('')}</div>
+    <div class="card" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div><div class="card-title" style="margin:0">${esc(t.file)}</div><div class="sub" style="margin:2px 0 0">${t.rows.length} proposals · all stages</div></div>
+      <b style="font-size:18px">${lakh(t.total)}</b>
+    </div>
+    <div class="btn-row">
+      <button class="btn" id="segPdf" ${t.rows.length ? '' : 'disabled'}>${ICON.down} PDF</button>
+      <button class="btn ghost" id="segXls" ${t.rows.length ? '' : 'disabled'}>${ICON.down} Excel</button>
+    </div>
+    <p class="sub" style="margin-top:10px">Needs internet the first time (the PDF / Excel maker is fetched once).</p>
+  `);
+  $('#segPdf').onclick = () => segReportPdf(segRepK);
+  $('#segXls').onclick = () => segReportXlsx(segRepK);
+}
+document.addEventListener('click', e => { const c = e.target.closest('[data-segrep]'); if (c) { segRepK = c.dataset.segrep; openSegReport(); } });
+const loadScript = src => new Promise((ok, fail) => {
+  if (document.querySelector(`script[src="${src}"]`)) return ok();
+  const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => fail(new Error('Could not load ' + src)); document.head.appendChild(s);
+});
+async function makeSegPdf(k) {
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js');
+  const t = segReportTable(k);
+  const doc = new window.jspdf.jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.text(t.title, 10, 11);
+  const amtCol = t.all ? 6 : 5;
+  const body = t.rows.map(r => r.map((c, i) => i === amtCol ? Number(c).toFixed(2) : String(c)));
+  const foot = [t.head.map((h, i) => i === amtCol ? t.total.toFixed(2) : i === amtCol - 1 ? 'Total' : '')];
+  const widths = t.all ? { 0: 8, 1: 9, 2: 24, 3: 40, 4: 24, 5: 15, 6: 16, 7: 21, 8: 30, 9: 38 } : { 0: 8, 1: 9, 2: 25, 3: 45, 4: 26, 5: 17, 6: 22, 7: 33, 8: 40 };
+  const columnStyles = {}; Object.entries(widths).forEach(([i, w]) => { columnStyles[i] = { cellWidth: w }; });
+  columnStyles[amtCol] = Object.assign(columnStyles[amtCol] || {}, { halign: 'right' });
+  doc.autoTable({
+    startY: 15, head: [t.head], body, foot, theme: 'grid', showFoot: 'lastPage', margin: { left: 10, right: 10 },
+    styles: { font: 'helvetica', fontSize: 8, cellPadding: 1.6, lineColor: [0, 0, 0], lineWidth: 0.15, textColor: [20, 20, 20], valign: 'top', minCellHeight: 8 },
+    headStyles: { fillColor: [255, 255, 255], textColor: [20, 20, 20], fontStyle: 'bold' },
+    footStyles: { fillColor: [255, 255, 255], textColor: [20, 20, 20], fontStyle: 'bold' },
+    columnStyles,
+    didParseCell: d => { if (d.section === 'foot' && d.column.index === amtCol) d.cell.styles.halign = 'right'; },
+    didDrawPage: d => { doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.text('Page ' + doc.internal.getNumberOfPages(), doc.internal.pageSize.getWidth() - 22, doc.internal.pageSize.getHeight() - 6); }
+  });
+  return { doc, t };
+}
+async function segReportPdf(k) {
+  try { toast('Making PDF…'); const { doc, t } = await makeSegPdf(k); doc.save(t.file + '.pdf'); toast('PDF downloaded', 'ok'); }
+  catch (err) { toast(navigator.onLine ? 'Could not make the PDF' : 'Needs internet the first time', 'err'); }
+}
+async function makeSegXlsx(k) {
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+  const t = segReportTable(k), amtCol = t.all ? 6 : 5;
+  const totalRow = t.head.map((h, i) => i === amtCol ? Math.round(t.total * 100) / 100 : i === amtCol - 1 ? 'Total' : '');
+  const ws = window.XLSX.utils.aoa_to_sheet([[t.title], [], t.head, ...t.rows, totalRow]);
+  ws['!cols'] = (t.all ? [5, 6, 16, 30, 16, 10, 12, 15, 30, 30, 30] : [5, 6, 16, 32, 16, 12, 15, 30, 32, 32]).map(w => ({ wch: w }));
+  for (let r = 3; r < 3 + t.rows.length + 1; r++) { const c = ws[window.XLSX.utils.encode_cell({ r, c: amtCol })]; if (c && typeof c.v === 'number') c.z = '0.00'; }
+  const wb = window.XLSX.utils.book_new();
+  window.XLSX.utils.book_append_sheet(wb, ws, SEG_CODE[k] + ' SEG');
+  return { wb, t };
+}
+async function segReportXlsx(k) {
+  try { toast('Making Excel…'); const { wb, t } = await makeSegXlsx(k); window.XLSX.writeFile(wb, t.file + '.xlsx'); toast('Excel downloaded', 'ok'); }
+  catch (err) { toast(navigator.onLine ? 'Could not make the Excel file' : 'Needs internet the first time', 'err'); }
+}
+window.__segReport = { segReportTable, makeSegPdf, makeSegXlsx };   // for testing
 
 async function copyText(text) {
   try { await navigator.clipboard.writeText(text); toast('Message copied', 'ok'); }
