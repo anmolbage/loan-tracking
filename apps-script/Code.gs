@@ -88,14 +88,14 @@ function defaultUsers_() {
   ];
 }
 
-// The 40 branches of RO Hazaribag (staff list as on 30.09.2026). BM name and mobile go in the Sheet.
+// The 41 branches of RO Hazaribag (staff list as on 30.09.2026). BM name and mobile go in the Sheet.
 var BRANCH_LIST = [[313,'Bahera'],[314,'Chatra'],[315,'Gidhour'],[316,'Hunterganj'],[317,'Itkhori'],[318,'Mayurhand'],
   [319,'Mishrol'],[320,'Pandepura'],[321,'Pitiz'],[322,'Pratappur'],[323,'Shila'],[403,'Barhi'],[404,'Barkagaon'],
   [405,'Barkattha'],[406,'Bishnugarh'],[407,'Bishrampur (H)'],[408,'Chalkusha'],[409,'Chouparan'],[410,'Choutha'],
   [411,'Gorbanda'],[412,'Hazaribag'],[413,'Ichak'],[414,'Katkamdag'],[415,'Korrah Chowk'],[416,'Surajpura'],
   [417,'Turkabad'],[418,'Urimari'],[428,'Bariadih'],[429,'Khutta'],[430,'Koderma'],[431,'Parsabad'],
   [439,'Chattarmandu'],[440,'Gola'],[441,'Mandu Bazar'],[442,'Patratu'],[443,'Ramgarh Cantt'],[552,'Daru'],
-  [556,'Dadpur'],[557,'Korambey'],[559,'Rampur']];
+  [556,'Dadpur'],[557,'Korambey'],[559,'Rampur'],[563,'Domchanch']];
 var DESK_LIST = [['personal', 'Personal Officer'], ['sme', 'SME Officer'], ['agri', 'Agri Officer'], ['head', 'AMH Head']];
 
 // ============================================================ SETUP

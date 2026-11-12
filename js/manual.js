@@ -30,7 +30,7 @@ window.manualHtml = function (s) {
   ${sec('Add a new proposal (+)', `
     <p>Tap the round <b>+</b> button at the bottom.</p>
     <ul>
-      <li><b>Branch</b>: pick from the 40 branches.</li>
+      <li><b>Branch</b>: pick from all the branches of the region.</li>
       <li><b>Borrower / firm</b> and <b>Amount in ₹ lakh</b> (25 means ₹25 lakh).</li>
       <li><b>Segment</b> (Personal / SME / Agri) and <b>Product</b>. The segment decides which processing officer the file goes to.</li>
       <li><b>Stage</b> and <b>At this stage since</b>: when the file reached this stage. Use the real date, not today, if it has been waiting.</li>
